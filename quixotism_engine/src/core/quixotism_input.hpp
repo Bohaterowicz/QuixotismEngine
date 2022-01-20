@@ -1,5 +1,10 @@
 #pragma once
 #include "quixotism_c.hpp"
+#include <array>
+
+const uint32 MAX_SUPPORTED_CONTROLLERS = 5;
+const uint32 SUPPORTED_CONTROLLERS_BUTTONS_COUNT = 12;
+const uint32 SUPPORTED_MOUSE_BUTTON_COUNT = 5;
 
 struct button_state
 {
@@ -16,7 +21,7 @@ struct controller_input
     real32 StickAverageY;
 
     union {
-        button_state Buttons[12];
+        button_state Buttons[SUPPORTED_CONTROLLERS_BUTTONS_COUNT];
         struct
         {
             button_state Up;
@@ -40,10 +45,11 @@ struct controller_input
 
 struct engine_input
 {
-    button_state MouseButtons[5];
+    std::array<button_state, SUPPORTED_MOUSE_BUTTON_COUNT> MouseButtons;
+
     int32 MouseX, MouseY, MouseZ;
     real32 TimeStep;
-    controller_input Controllers[5];
+    controller_input Controllers[MAX_SUPPORTED_CONTROLLERS];
 };
 
 inline controller_input *GetController(engine_input *Input, uint32 Index)

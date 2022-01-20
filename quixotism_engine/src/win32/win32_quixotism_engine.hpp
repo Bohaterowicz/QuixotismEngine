@@ -1,7 +1,11 @@
 #pragma once
 #include "quixotism_c.hpp"
 
-const bool32 VSYNC = 1;
+// SwapIntervalCount=0 means that vsync is disabled, =1 means vsync enabled, >1 means that we gonan skip every n-th
+// buffer-swap. Usually we gonna use only 0 or 1 values, 1 for doing vsync on monitor refresh rate, 0 if we want to use
+// custom framerate, like
+//  on my monitor refresh rate is 144hz, if I want to run at 60 FPS i need to disable vsync and manually time the frame!
+const uint32 SwapIntervalCount = 1;
 
 // Window Init parameters
 const int32 InitWindowPosX = 200;

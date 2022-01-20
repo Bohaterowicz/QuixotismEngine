@@ -11,11 +11,6 @@
 #define Assert(Expression)
 #endif
 
-template <typename T> auto constexpr ArrayCount(T Array)
-{
-    return sizeof(Array) / sizeof(Array[0]);
-}
-
 #define LOCAL_PERSIST static
 #define GLOBAL_VARIABLE static
 #define INTERNAL static
@@ -39,3 +34,9 @@ using uint64 = uint64_t;
 using real32 = float;
 using real64 = double;
 using bool32 = int32;
+using size = size_t;
+
+template <typename T, size N> auto constexpr ArrayCount(T (&Arr)[N])
+{
+    return N;
+}

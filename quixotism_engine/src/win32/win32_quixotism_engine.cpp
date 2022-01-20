@@ -2,18 +2,134 @@
 #include "GL/glew.h"
 #include "GL/wglew.h"
 #include "debug_out.hpp"
+
 #include <Windows.h>
-#include <string>
 
 #include "quixotism_engine.hpp"
 #include "quixotism_input.hpp"
 #include "win32_app_state.hpp"
+#include "win32_timer.hpp"
+
+#include <array>
+#include <string>
 
 INTERNAL auto *Win32GetAppState(HWND Window)
 {
     LONG_PTR Ptr = GetWindowLongPtr(Window, GWLP_USERDATA);
     auto *WindowState = reinterpret_cast<win32_app_state *>(Ptr);
     return WindowState;
+}
+
+INTERNAL bool32 Win32OpenDebugConsole()
+{
+    bool32 Result = AllocConsole();
+    if (Result == TRUE)
+    {
+        freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
+        DEBUG_OUT("-----> Tiny Renderer DEBUG console! <-----");
+    }
+    return Result;
+}
+
+bool32 Win32SetPixelFormat(HWND Window)
+{
+    PIXELFORMATDESCRIPTOR PixelFormatDesc = {};
+    PixelFormatDesc.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    PixelFormatDesc.nVersion = 1;
+    PixelFormatDesc.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    PixelFormatDesc.iPixelType = PFD_TYPE_RGBA;
+    PixelFormatDesc.cColorBits = PIXELFORMAT_COLOR_BITS;
+    PixelFormatDesc.cAlphaBits = PIXELFORMAT_ALPHA_BITS;
+    PixelFormatDesc.cDepthBits = PIXELFORMAT_DEPTH_BITS;
+    PixelFormatDesc.cStencilBits = PIXELFORMAT_STENCIL_BITS;
+    PixelFormatDesc.iLayerType = PFD_MAIN_PLANE;
+    HDC WindowDC = GetDC(Window);
+    int32 SuggestedPixelFormat = ChoosePixelFormat(WindowDC, &PixelFormatDesc);
+    // Check if we got a valid suggestion of pixel format
+    if (SuggestedPixelFormat != 0)
+    {
+        // continue only if we succeed in setting the pxel format
+        if (SetPixelFormat(WindowDC, SuggestedPixelFormat, &PixelFormatDesc) != FALSE)
+        {
+            return TRUE;
+        }
+    }
+    ReleaseDC(Window, WindowDC);
+    return FALSE;
+}
+
+INTERNAL auto Win32InitializeOpenGL(HWND Window)
+{
+    bool32 InitializationResult = FALSE;
+
+    // continue only if we succeed in setting the pxel format
+    if (Win32SetPixelFormat(Window) != FALSE)
+    {
+        HDC WindowDC = GetDC(Window);
+        // Creat opengl context
+        HGLRC OpenGLRenderingContext = wglCreateContext(WindowDC);
+
+        // Check if we got valid rendering context
+        if (OpenGLRenderingContext)
+        {
+            if (wglMakeCurrent(WindowDC, OpenGLRenderingContext) != 0)
+            {
+                // initialize glew, if we fail, we should stop initialization of opengl, as we need glew right now.
+                if (glewInit() == GLEW_OK)
+                {
+                    const uint32 WGL_CONTEXT_ATTRIBS_COUNT = 9;
+                    // Context attribs, we specify the version we want to use...
+                    std::array<int32, WGL_CONTEXT_ATTRIBS_COUNT> WGL_ContextAttribs = {WGL_CONTEXT_MAJOR_VERSION_ARB,
+                                                                                       OPENGL_DESIRED_MAJOR_VERION,
+                                                                                       WGL_CONTEXT_MINOR_VERSION_ARB,
+                                                                                       OPENGL_DESIRED_MINOR_VERION,
+                                                                                       WGL_CONTEXT_FLAGS_ARB,
+                                                                                       0,
+                                                                                       WGL_CONTEXT_PROFILE_MASK_ARB,
+                                                                                       WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+                                                                                       0};
+
+                    // Check for "WGL_ARB_create_context" as we may want to specify our own version of opengl
+                    if (wglewIsSupported("WGL_ARB_create_context") == GL_TRUE)
+                    {
+                        // Create context with specified attributes
+                        HGLRC OpenGLRenderingContextARB =
+                            wglCreateContextAttribsARB(WindowDC, nullptr, WGL_ContextAttribs.data());
+                        if (OpenGLRenderingContextARB)
+                        {
+                            wglMakeCurrent(nullptr, nullptr);
+                            wglDeleteContext(OpenGLRenderingContext);
+                            wglMakeCurrent(WindowDC, OpenGLRenderingContextARB);
+                        }
+                    }
+                    else
+                    {
+                        DEBUG_OUT("----------> wglCreateContextAtribs not specified (WARNING)");
+                    }
+                    // We scucceded in initializing opengl in our window
+                    // Print out opengl version...
+                    const auto *GLVersion = glGetString(GL_VERSION);
+                    std::string OGLText("OpenGL VERSION: ");
+                    std::string GLVersionStr(reinterpret_cast<const char *>(GLVersion));
+                    DEBUG_OUT((OGLText + GLVersionStr + "\n").c_str());
+
+                    // NOTE: IMPORTANT: Activates vsync (swap buffers on vertical blank)!]
+                    wglSwapIntervalEXT(SwapIntervalCount);
+
+                    InitializationResult = TRUE;
+                }
+                else
+                {
+                    // deinitialize the current rendering context
+                    wglMakeCurrent(nullptr, nullptr);
+                    wglDeleteContext(OpenGLRenderingContext);
+                    DEBUG_OUT("GLEW could not be initialized... (ABORTING)");
+                }
+            }
+        }
+        ReleaseDC(Window, WindowDC);
+    }
+    return InitializationResult;
 }
 
 // Main window callback procedure
@@ -25,10 +141,16 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
     {
 
     case WM_CREATE: {
-        win32_app_state *AppState;
         auto *Create = reinterpret_cast<CREATESTRUCT *>(LParam);
-        AppState = reinterpret_cast<win32_app_state *>(Create->lpCreateParams);
+        auto *AppState = reinterpret_cast<win32_app_state *>(Create->lpCreateParams);
         SetWindowLongPtr(Window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(AppState));
+        if (Win32InitializeOpenGL(Window) == FALSE)
+        {
+            // Could not initialize opengl..
+            // NOTE: Currently there is only opengl, if we fail to initialize it, the application has to close. If we
+            // were to support other (like Direct3D), then we could try to fallback to those.
+            PostQuitMessage(-1);
+        }
     }
     break;
 
@@ -131,6 +253,20 @@ void Win32ProcessWindowMessages(win32_app_state &AppState)
 int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int CmdShow)
 {
 
+#ifdef BUILD_INTERNAL
+    auto DebugConsoleOK = Win32OpenDebugConsole();
+    if (DebugConsoleOK == TRUE)
+    {
+        DEBUG_OUT("DEBUG BUILD");
+    }
+    else
+    {
+        return -1;
+    }
+#endif
+
+    win32_timer Timer;
+
     // Creating our window class
     WNDCLASSEXA WindowClass = {};
     WindowClass.cbSize = sizeof(WNDCLASSEXA);
@@ -161,9 +297,25 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
         if (Window)
         {
             AppState.Start();
+
+            auto LastTimestamp = win32_timer::GetTimestamp();
             while (AppState.IsRunning())
             {
                 Win32ProcessWindowMessages(AppState);
+
+                HDC WindowDC = GetDC(Window);
+                SwapBuffers(WindowDC);
+                ReleaseDC(Window, WindowDC);
+
+                auto EndTimestamp = win32_timer::GetTimestamp();
+                auto MillisecondsPerFrame = Timer.GetTimeDifference<milliseconds>(LastTimestamp, EndTimestamp);
+                real64 FPS = MILLISECONDS_IN_SECONDS / MillisecondsPerFrame.Count;
+
+                char Buffer[256];
+                sprintf_s(Buffer, "Milliseconds/frame: %.02fms --FPS: %.02f\n", MillisecondsPerFrame.Count, FPS);
+                OutputDebugStringA(Buffer);
+
+                LastTimestamp = win32_timer::GetTimestamp();
             }
         }
     }

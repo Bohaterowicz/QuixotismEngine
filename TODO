@@ -2,7 +2,7 @@
 
 -------18.05.2022------
 1. Open A simple Windows Window = OK
-2. Initialize OpenGL context with window (actiavte VSYNC/SwapInterval) = 
-3. Time main window/app loop (verify that vsync works) = 
+2. Initialize OpenGL context with window (actiavte VSYNC/SwapInterval) = OK
+3. Time main window/app loop (verify that vsync works) = OK
 4. Simple handling of keyboard input = 
 5. Simple mouse input + trapping mouse in window and in center + curosr visibility toggle = 
