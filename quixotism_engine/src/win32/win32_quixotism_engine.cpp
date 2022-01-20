@@ -4,6 +4,7 @@
 #include "debug_out.hpp"
 
 #include <Windows.h>
+#include <Windowsx.h>
 
 #include "quixotism_engine.hpp"
 #include "quixotism_input.hpp"
@@ -31,7 +32,47 @@ INTERNAL bool32 Win32OpenDebugConsole()
     return Result;
 }
 
-bool32 Win32SetPixelFormat(HWND Window)
+INTERNAL void Win32ProcessMouseMovement(HWND Window, win32_app_state &AppState, engine_input *Input)
+{
+    POINT MousePos = {};
+    if (AppState.IsCursorTrapped() == TRUE)
+    {
+        GetCursorPos(&MousePos);
+    }
+
+    const auto [ClientWidth, ClientHeight] = AppState.GetClientDimensions();
+    int32 CenterX = ClientWidth / 2;
+    int32 CenterY = ClientHeight / 2;
+    auto XDiff = static_cast<real32>(MousePos.x - CenterX);
+    auto YDiff = static_cast<real32>(MousePos.y - CenterY);
+
+    Input->SetCursorPositionChange(XDiff, YDiff);
+    POINT CenterPos = {CenterX, CenterY};
+    ClientToScreen(Window, &CenterPos);
+
+    if (AppState.IsCursorTrapped() == TRUE)
+    {
+        SetCursorPos(CenterPos.x, CenterPos.y);
+    }
+}
+
+INTERNAL std::pair<int32, int32> Win32GetClientDimension(HWND WindowHandle)
+{
+    RECT ClientRect;
+    GetClientRect(WindowHandle, &ClientRect);
+    return std::make_pair(ClientRect.right - ClientRect.left, ClientRect.bottom - ClientRect.top);
+}
+
+INTERNAL void Win32ProcessKeyboardInput(button_state &NewState, bool32 IsDown)
+{
+    if (NewState.EndedDown != IsDown)
+    {
+        NewState.EndedDown = IsDown;
+        NewState.HalfTransitionCount++;
+    }
+}
+
+INTERNAL bool32 Win32SetPixelFormat(HWND Window)
 {
     PIXELFORMATDESCRIPTOR PixelFormatDesc = {};
     PixelFormatDesc.nSize = sizeof(PIXELFORMATDESCRIPTOR);
@@ -151,10 +192,24 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
             // were to support other (like Direct3D), then we could try to fallback to those.
             PostQuitMessage(-1);
         }
+        // Initialize the cursor to the center of the window...
+        auto const [Width, Height] = AppState->GetClientDimensions();
+        SetCursorPos(Width / 2, Height / 2);
     }
     break;
 
     case WM_SIZE: {
+        auto const [Width, Height] = Win32GetClientDimension(Window);
+        auto *AppState = Win32GetAppState(Window);
+        AppState->SetClientDimensions(Width, Height);
+        if (AppState->IsCursorTrapped())
+        {
+            RECT PreviousCursorClip = AppState->GetPreviousCursorClip();
+            RECT WindowCursorClip;
+            GetWindowRect(Window, &WindowCursorClip);
+            ClipCursor(&WindowCursorClip);
+            AppState->EnableCursorTrap(WindowCursorClip, PreviousCursorClip);
+        }
         OutputDebugStringA("WM_SIZE\n");
     }
     break;
@@ -174,6 +229,24 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
     break;
 
     case WM_ACTIVATEAPP: {
+        auto *AppState = Win32GetAppState(Window);
+        if (WParam == TRUE)
+        {
+            // Window is being activated
+            RECT PreviousCursorClip;
+            GetClipCursor(&PreviousCursorClip);
+            RECT WindowCursorClip;
+            GetWindowRect(Window, &WindowCursorClip);
+            ClipCursor(&WindowCursorClip);
+            AppState->EnableCursorTrap(WindowCursorClip, PreviousCursorClip);
+        }
+        else
+        {
+            // Window is being deactivated
+            auto PreviousCursorClip = AppState->GetPreviousCursorClip();
+            ClipCursor(&PreviousCursorClip);
+            AppState->DisableCursorTrap();
+        }
         OutputDebugStringA("WM_ACTIVATEAPP\n");
     }
     break;
@@ -195,7 +268,7 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
     return Result;
 }
 
-void Win32ProcessWindowMessages(win32_app_state &AppState)
+void Win32ProcessWindowMessages(HWND Window, win32_app_state &AppState, engine_input *Input)
 {
     // NOTE: message processing loop (non-blocking)
     MSG Message;
@@ -212,6 +285,9 @@ void Win32ProcessWindowMessages(win32_app_state &AppState)
         case WM_SYSKEYUP:
         case WM_KEYDOWN:
         case WM_KEYUP: {
+
+            auto &KeyboardController = Input->GetKeybaordController();
+
             constexpr uint32 WAS_DOWN_BIT_SHIFT = 30;
             constexpr uint32 IS_DOWN_BIT_SHIFT = 31;
             constexpr uint32 ALT_KEY_IS_DOWN_SHIFT = 29;
@@ -228,8 +304,24 @@ void Win32ProcessWindowMessages(win32_app_state &AppState)
             // (meaning that a key is being held down)
             if (WasDown != IsDown)
             {
-
-                if (VKCode == VK_ESCAPE)
+                if (VKCode == 'C')
+                {
+                    if (IsDown)
+                    {
+                        DEBUG_OUT("TOGGLING MOUSE VISIBILITY");
+                        Win32ProcessKeyboardInput(KeyboardController.Start, IsDown);
+                        AppState.ToggleCursorHidden();
+                        if (AppState.IsCursorHidden())
+                        {
+                            ShowCursor(FALSE);
+                        }
+                        else
+                        {
+                            ShowCursor(TRUE);
+                        }
+                    }
+                }
+                else if (VKCode == VK_ESCAPE)
                 {
                     AppState.Stop();
                 }
@@ -267,12 +359,15 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
 
     win32_timer Timer;
 
+    const real32 TargetSecondsPerFrame = 0.1667F;
+
     // Creating our window class
     WNDCLASSEXA WindowClass = {};
     WindowClass.cbSize = sizeof(WNDCLASSEXA);
     WindowClass.style = CS_HREDRAW | CS_VREDRAW;
     WindowClass.lpfnWndProc = Win32QuixotismEngineWindowProc;
     WindowClass.hInstance = Instance;
+    WindowClass.hCursor = LoadCursorA(nullptr, IDC_ARROW); // NOLINT
     WindowClass.lpszClassName = "QuixotismEngineWindowClass";
 
     // Registering window class
@@ -288,32 +383,42 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
         AdjustWindowRectEx(&InitWindowSize, WS_OVERLAPPEDWINDOW | WS_VISIBLE, false, 0);
 
         // Create window
-        HWND Window =
-            CreateWindowExA(0, WindowClass.lpszClassName, "QuixotismEngine", WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-                            InitWindowSize.left, InitWindowSize.top, (InitWindowSize.right - InitWindowSize.left),
-                            (InitWindowSize.bottom - InitWindowSize.top), nullptr, nullptr, Instance, &AppState);
+        HWND Window = CreateWindowExA(
+            0, WindowClass.lpszClassName, "QuixotismEngine", (WS_OVERLAPPEDWINDOW | WS_VISIBLE) & ~WS_THICKFRAME,
+            InitWindowSize.left, InitWindowSize.top, (InitWindowSize.right - InitWindowSize.left),
+            (InitWindowSize.bottom - InitWindowSize.top), nullptr, nullptr, Instance, &AppState);
 
         // check if we got a valid window handle and state
         if (Window)
         {
+            engine_input Input[2];
+            engine_input *NewInput = &Input[0];
+            engine_input *PrevInput = &Input[1];
+
+            NewInput->SetTimeStep(TargetSecondsPerFrame);
+
             AppState.Start();
 
             auto LastTimestamp = win32_timer::GetTimestamp();
             while (AppState.IsRunning())
             {
-                Win32ProcessWindowMessages(AppState);
+                Win32ProcessWindowMessages(Window, AppState, NewInput);
+                Win32ProcessMouseMovement(Window, AppState, NewInput);
 
                 HDC WindowDC = GetDC(Window);
                 SwapBuffers(WindowDC);
                 ReleaseDC(Window, WindowDC);
 
+                SwapPointers(NewInput, PrevInput);
+
                 auto EndTimestamp = win32_timer::GetTimestamp();
                 auto MillisecondsPerFrame = Timer.GetTimeDifference<milliseconds>(LastTimestamp, EndTimestamp);
                 real64 FPS = MILLISECONDS_IN_SECONDS / MillisecondsPerFrame.Count;
 
-                char Buffer[256];
+                const uint32 BufferSize = 256;
+                char Buffer[BufferSize];
                 sprintf_s(Buffer, "Milliseconds/frame: %.02fms --FPS: %.02f\n", MillisecondsPerFrame.Count, FPS);
-                OutputDebugStringA(Buffer);
+                OutputDebugStringA(&Buffer[0]);
 
                 LastTimestamp = win32_timer::GetTimestamp();
             }

@@ -1,5 +1,6 @@
 #pragma once
 #include "quixotism_c.hpp"
+#include <Windows.h>
 #include <utility>
 
 class win32_app_state
@@ -19,6 +20,12 @@ class win32_app_state
     [[nodiscard]] auto GetClientDimensions() const
     {
         return std::make_pair(Width, Height);
+    }
+
+    void SetClientDimensions(int32 NewWidth, int32 NewHeight) noexcept
+    {
+        Width = NewWidth;
+        Height = NewHeight;
     }
 
     /**
@@ -67,6 +74,38 @@ class win32_app_state
         Paused = FALSE;
     }
 
+    [[nodiscard]] auto const &GetPreviousCursorClip() const noexcept
+    {
+        return PreviousCursorClip;
+    }
+
+    void EnableCursorTrap(RECT NewWindowCursorClip, RECT OldCursorClip) noexcept
+    {
+        WindowCursorClip = NewWindowCursorClip;
+        PreviousCursorClip = OldCursorClip;
+        TrapCursor = TRUE;
+    }
+
+    void DisableCursorTrap() noexcept
+    {
+        TrapCursor = FALSE;
+    }
+
+    [[nodiscard]] auto IsCursorTrapped() const noexcept
+    {
+        return TrapCursor;
+    }
+
+    [[nodiscard]] auto IsCursorHidden() const noexcept
+    {
+        return CursorHidden;
+    }
+
+    void ToggleCursorHidden() noexcept
+    {
+        CursorHidden = !CursorHidden;
+    }
+
   private:
     // Client area width (excluding window border, only working area)
     int32 Width;
@@ -77,4 +116,11 @@ class win32_app_state
     bool32 Running;
 
     bool32 Paused;
+
+    // Cursor trap variables
+    bool32 TrapCursor = FALSE;
+    RECT PreviousCursorClip = {};
+    RECT WindowCursorClip = {};
+
+    bool32 CursorHidden = false;
 };

@@ -40,3 +40,10 @@ template <typename T, size N> auto constexpr ArrayCount(T (&Arr)[N])
 {
     return N;
 }
+
+template <typename T> void constexpr SwapPointers(T *A, T *B)
+{
+    T *Temp = A;
+    A = B;
+    B = Temp;
+}

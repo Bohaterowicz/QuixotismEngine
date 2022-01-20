@@ -6,6 +6,19 @@ const uint32 MAX_SUPPORTED_CONTROLLERS = 5;
 const uint32 SUPPORTED_CONTROLLERS_BUTTONS_COUNT = 12;
 const uint32 SUPPORTED_MOUSE_BUTTON_COUNT = 5;
 
+// IMPORTANT: the value of each of the button types correspands to index in the MouseButtons array, thus the values MUST
+// be continous, and should never exceed the size of MouseButton array.
+//  Thus when adding support for new mouse buttons, one must add the enum here we correct index corresponding to
+//  MouseButton index of the new button!
+enum class mouse_button_type : uint8
+{
+    LEFT = 0,
+    RIGHT = 1,
+    MIDDLE = 2,
+    X1 = 3,
+    X2 = 4
+};
+
 struct button_state
 {
     int HalfTransitionCount;
@@ -43,29 +56,59 @@ struct controller_input
     };
 };
 
-struct engine_input
+class engine_input
 {
-    std::array<button_state, SUPPORTED_MOUSE_BUTTON_COUNT> MouseButtons;
+  public:
+    engine_input() = default;
+    explicit engine_input(real32 TargetTimeStep) noexcept : TimeStep{TargetTimeStep}
+    {
+    }
 
-    int32 MouseX, MouseY, MouseZ;
-    real32 TimeStep;
-    controller_input Controllers[MAX_SUPPORTED_CONTROLLERS];
+    auto &GetController(uint32 Index) noexcept
+    {
+        Assert(Index < Controllers.size());
+        return Controllers[Index];
+    }
+
+    /**
+     * @brief Returns keybaord controller. Keyboard controller is always at index 0 in Controllers array!
+     *
+     * @param engine_input* Input struct
+     * @return controller_input* Keybaord Controller
+     */
+    auto &GetKeybaordController() noexcept
+    {
+        auto &KeyboardController = GetController(0);
+        return KeyboardController;
+    }
+
+    auto &GetMouseButtonState(mouse_button_type ButtonType)
+    {
+        Assert(static_cast<uint8>(ButtonType) < MouseButtons.size());
+        return MouseButtons[static_cast<uint8>(ButtonType)];
+    }
+
+    [[nodiscard]] auto GetTimeStep() const noexcept
+    {
+        return TimeStep;
+    }
+
+    void SetTimeStep(real32 _TimeStep) noexcept
+    {
+        TimeStep = _TimeStep;
+    }
+
+    void SetCursorPositionChange(real32 DeltaX, real32 DeltaY) noexcept
+    {
+        MouseDeltaX = DeltaX;
+        MouseDeltaY = DeltaY;
+    }
+
+  private:
+    std::array<button_state, SUPPORTED_MOUSE_BUTTON_COUNT> MouseButtons = {};
+    std::array<controller_input, MAX_SUPPORTED_CONTROLLERS> Controllers = {};
+
+    real32 MouseDeltaX = 0;
+    real32 MouseDeltaY = 0;
+    real32 TimeStep = 0.0F;
 };
-
-inline controller_input *GetController(engine_input *Input, uint32 Index)
-{
-    Assert(Index < ArrayCount(Input->Controllers));
-    return &Input->Controllers[Index];
-}
-
-/**
- * @brief Returns keybaord controller. Keyboard controller is always at index 0 in Controllers array!
- *
- * @param engine_input* Input struct
- * @return controller_input* Keybaord Controller
- */
-inline controller_input *GetKeybaordController(engine_input *Input)
-{
-    controller_input *KeybaordController = GetController(Input, 0);
-    return KeybaordController;
-}
