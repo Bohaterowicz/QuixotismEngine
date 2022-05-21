@@ -29,12 +29,14 @@ struct milliseconds
 class win32_timer
 {
   public:
-    explicit win32_timer()
+    static int64 ClockFrequency;
+    static timestamp InitTimestamp;
+    static int64 __InitQuixotismClock()
     {
         // Get the clock frequency
         LARGE_INTEGER LI_ClockFrequency;
         QueryPerformanceFrequency(&LI_ClockFrequency);
-        ClockFrequency = LI_ClockFrequency.QuadPart;
+        return LI_ClockFrequency.QuadPart;
     }
 
     static timestamp GetTimestamp()
@@ -44,12 +46,18 @@ class win32_timer
         return Result;
     }
 
-    template <typename T> T GetTimeDifference(timestamp Start, timestamp End)
+    template <typename T> static T GetTimeDifference(timestamp Start, timestamp End)
     {
         auto SecondsDiff = (static_cast<real64>(End.QuadPart - Start.QuadPart) / static_cast<real64>(ClockFrequency));
         return T::FromSeconds(SecondsDiff);
     }
-
-  private:
-    int64 ClockFrequency = 0;
 };
+int64 win32_timer::ClockFrequency = win32_timer::__InitQuixotismClock();
+timestamp win32_timer::InitTimestamp = win32_timer::GetTimestamp();
+
+real64 GetRunningTime()
+{
+    auto CurrentTimestamp = win32_timer::GetTimestamp();
+    auto Result = win32_timer::GetTimeDifference<seconds>(win32_timer::InitTimestamp, CurrentTimestamp);
+    return Result.Count;
+}

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(Quixotism VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
-INCLUDE_DIRECTORIES(./quixotism_engine/src/util ./quixotism_engine/src/win32 ./quixotism_engine/src/core ./external/GLEW/include ./external/GLM)
+INCLUDE_DIRECTORIES(./quixotism_engine/src/util ./quixotism_engine/src/renderer ./quixotism_engine/src/math ./quixotism_engine/src/win32 ./quixotism_engine/src/core ./quixotism_engine/src/opengl ./external/GLEW/include ./external/GLM)
 
 add_compile_definitions(GLEW_STATIC)
 message("COMPILE DEFINITION ADDED: GLEW_STATIC ----> Build needs to link GLEW as static library!")
@@ -27,19 +27,25 @@ message("COMPILE OPTION ADDED: -Oi ----> Build will be built with intrinsic supp
 add_compile_options(-MTd)
 message("COMPILE OPTION ADDED: -MTd")
 
+add_compile_options(/ZI)
+message("COMPILE OPTION ADDED: /ZI")
+
 add_compile_options(-wd4201 -wd4100)
 message("COMPILE OPTION ADDED: -wd4201 -wd4100 ----> Those warnings will be disabled")
 
 file(GLOB WIN32_SOURCES "quixotism_engine/src/win32/*.cpp")
-file(GLOB CORE_SOURCES "quixotism_engine/src/core/*.cpp")
+file(GLOB CORE_SOURCES "quixotism_engine/src/core/*.cpp" "quixotism_engine/src/core/components/*.cpp")
+file(GLOB OPENGL_SOURCES "quixotism_engine/src/opengl/*.cpp")
+file(GLOB RENDERER_SOURCES "quixotism_engine/src/renderer/*.cpp")
+file(GLOB STB_IMAGE "quixotism_engine/src/util/stb_image.cpp")
 
-add_library(QuixotismEngine ${CORE_SOURCES} ${MICROGL_SOURCES})
+add_library(QuixotismEngine ${CORE_SOURCES} ${MICROGL_SOURCES} ${OPENGL_SOURCES} ${RENDERER_SOURCES} ${STB_IMAGE})
 
 
 find_library(GLEW_LIB glew32s HINTS external/GLEW/lib)
 find_package(OpenGL REQUIRED)
 
-TARGET_LINK_LIBRARIES(QuixotismEngine ${GLEW_LIB} opengl32)
+target_link_libraries(QuixotismEngine ${GLEW_LIB} opengl32)
 
 add_executable(win32_QuixotismEngine WIN32 ${WIN32_SOURCES})
 target_link_libraries(win32_QuixotismEngine QuixotismEngine user32.lib gdi32.lib winmm.lib)

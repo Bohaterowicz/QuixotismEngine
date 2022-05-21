@@ -8,10 +8,13 @@
 
 #include "quixotism_engine.hpp"
 #include "quixotism_input.hpp"
+#include "quixotism_platform_services.hpp"
 #include "win32_app_state.hpp"
+#include "win32_io.hpp"
 #include "win32_timer.hpp"
 
 #include <array>
+#include <memory>
 #include <string>
 
 INTERNAL auto *Win32GetAppState(HWND Window)
@@ -27,7 +30,7 @@ INTERNAL bool32 Win32OpenDebugConsole()
     if (Result == TRUE)
     {
         freopen_s(reinterpret_cast<FILE **>(stdout), "CONOUT$", "w", stdout);
-        DEBUG_OUT("-----> Tiny Renderer DEBUG console! <-----");
+        DEBUG_OUT("-----> Quixotism DEBUG console! <-----");
     }
     return Result;
 }
@@ -357,8 +360,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
     }
 #endif
 
-    win32_timer Timer;
-
     const real32 TargetSecondsPerFrame = 0.1667F;
 
     // Creating our window class
@@ -397,6 +398,16 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
 
             NewInput->SetTimeStep(TargetSecondsPerFrame);
 
+            const auto [Width, Height] = AppState.GetClientDimensions();
+            quixotism_window_info WindowInfo = {Width, Height};
+
+            platform_services PlatformServices = {};
+            PlatformServices.ReadFile = Win32ReadFile;
+            PlatformServices.GetTime = GetRunningTime;
+
+            QuixotismEngine = std::make_unique<quixotism_engine>(WindowInfo, PlatformServices);
+            QuixotismEngine->Init();
+
             AppState.Start();
 
             auto LastTimestamp = win32_timer::GetTimestamp();
@@ -405,6 +416,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
                 Win32ProcessWindowMessages(Window, AppState, NewInput);
                 Win32ProcessMouseMovement(Window, AppState, NewInput);
 
+                QuixotismEngine->UpdateAndRender();
+
                 HDC WindowDC = GetDC(Window);
                 SwapBuffers(WindowDC);
                 ReleaseDC(Window, WindowDC);
@@ -412,7 +425,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
                 SwapPointers(NewInput, PrevInput);
 
                 auto EndTimestamp = win32_timer::GetTimestamp();
-                auto MillisecondsPerFrame = Timer.GetTimeDifference<milliseconds>(LastTimestamp, EndTimestamp);
+                auto MillisecondsPerFrame = win32_timer::GetTimeDifference<milliseconds>(LastTimestamp, EndTimestamp);
                 real64 FPS = MILLISECONDS_IN_SECONDS / MillisecondsPerFrame.Count;
 
                 const uint32 BufferSize = 256;
