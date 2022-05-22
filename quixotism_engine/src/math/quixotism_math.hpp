@@ -95,6 +95,11 @@ inline real32 Cos(real32 Angle)
     return cosf(Angle);
 }
 
+inline real32 Tan(real32 Angle)
+{
+    return tanf(Angle);
+}
+
 inline real32 Atan2(real32 Y, real32 X)
 {
     return atan2f(Y, X);

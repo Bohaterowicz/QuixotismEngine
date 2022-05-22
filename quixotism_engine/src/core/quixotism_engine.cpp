@@ -25,10 +25,10 @@ void quixotism_engine::Init()
 
     float Vertices[] = {
         // positions          // colors           // texture coords
-        0.5f,  0.5f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-        0.5f,  -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-        -0.5f, 0.5f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f  // top left
+        0.5F,  0.5F,  0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, // top right
+        0.5F,  -0.5F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, // bottom right
+        -0.5F, -0.5F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, // bottom left
+        -0.5F, 0.5F,  0.0F, 1.0F, 1.0F, 0.0F, 0.0F, 1.0F  // top left
     };
     unsigned int Indices[] = {
         0, 1, 3, // first triangle
@@ -64,6 +64,7 @@ void quixotism_engine::Init()
     int32 Width = 0;
     int32 Height = 0;
     int32 NChannels = 0;
+
     uint8 *ImageData = stbi_load("../../quixotism_engine/data/textures/wall.jpg", &Width, &Height, &NChannels, 0);
     Texture1 = std::make_unique<texture2d>(ImageData, Width, Height, NChannels);
     stbi_image_free(ImageData);
@@ -71,6 +72,11 @@ void quixotism_engine::Init()
     Sampler = std::make_unique<gl_sampler>();
     Sampler->SetBindSlot(0);
     Texture1->SetBindSlot(0);
+
+    Camera = std::make_unique<camera>();
+    auto &ct = Camera->GetComponent<transform>();
+    ct.SetPosition(glm::vec3(-1.0F, 0.0F, 1.0F));
+    ct.SetRotation(glm::vec3(0.0F, -45.0F, 0.0F));
 }
 
 void quixotism_engine::UpdateAndRender() noexcept
@@ -83,6 +89,8 @@ void quixotism_engine::UpdateAndRender() noexcept
     Shader.Bind();
     // Shader.SetUniform4f("Color", Color);
     Shader.SetUniform1i("TextureSampler", 0);
+    auto MVP = Camera->GetProjectionMatrix() * Camera->GetViewMatrix();
+    Shader.SetUniformMtx4("MVP", MVP);
     Sampler->Bind();
     Texture1->Bind();
     SMesh->Draw();

@@ -35,7 +35,7 @@ template <class ComponentType, typename... Args> bool32 entity::AddComponent(Arg
 {
     if (&GetComponent<ComponentType>() == nullptr)
     {
-        components.emplace_back(std::make_unique<ComponentType>(std::forward<Args>(params)...));
+        Components.emplace_back(std::make_unique<ComponentType>(std::forward<Args>(params)...));
         return true;
     }
     else
@@ -53,10 +53,10 @@ template <class ComponentType, typename... Args> bool32 entity::AddComponent(Arg
 //***************
 template <class ComponentType> ComponentType &entity::GetComponent()
 {
-    for (auto &&component : components)
+    for (auto &&Component : Components)
     {
-        if (component->IsClassType(ComponentType::Type))
-            return *static_cast<ComponentType *>(component.get());
+        if (Component->IsComponentType(ComponentType::Type))
+            return *static_cast<ComponentType *>(Component.get());
     }
 
     return *std::unique_ptr<ComponentType>(nullptr);
@@ -69,19 +69,20 @@ template <class ComponentType> ComponentType &entity::GetComponent()
 //***************
 template <class ComponentType> bool32 entity::RemoveComponent()
 {
-    if (components.empty())
+    if (Components.empty())
         return false;
 
-    auto &index =
-        std::find_if(components.begin(), components.end(),
-                     [classType = ComponentType::Type](auto &component) { return component->IsClassType(classType); });
+    auto &Index =
+        std::find_if(Components.begin(), Components.end(), [ComponentType = ComponentType::Type](auto &Component) {
+            return Component->IsComponentType(ComponentType);
+        });
 
-    bool success = index != components.end();
+    bool Success = Index != Components.end();
 
-    if (success)
-        components.erase(index);
+    if (Success)
+        Components.erase(Index);
 
-    return success;
+    return Success;
 }
 
 //***************
@@ -97,15 +98,15 @@ template <class ComponentType> bool32 entity::RemoveComponent()
 //***************
 template <class ComponentType> std::vector<ComponentType *> entity::GetComponents()
 {
-    std::vector<ComponentType *> componentsOfType;
+    std::vector<ComponentType *> ComponentsOfType;
 
-    for (auto &&component : components)
+    for (auto &&Component : Components)
     {
-        if (component->IsClassType(ComponentType::Type))
-            componentsOfType.emplace_back(static_cast<ComponentType *>(component.get()));
+        if (Component->IsComponentType(ComponentType::Type))
+            ComponentsOfType.emplace_back(static_cast<ComponentType *>(Component.get()));
     }
 
-    return componentsOfType;
+    return ComponentsOfType;
 }
 
 //***************
@@ -114,27 +115,27 @@ template <class ComponentType> std::vector<ComponentType *> entity::GetComponent
 //***************
 template <class ComponentType> int32 entity::RemoveComponents()
 {
-    if (components.empty())
+    if (Components.empty())
         return 0;
 
-    int numRemoved = 0;
-    bool success = false;
+    int NumRemoved = 0;
+    bool Success = false;
 
     do
     {
-        auto &index =
-            std::find_if(components.begin(), components.end(), [classType = ComponentType::Type](auto &component) {
-                return component->IsClassType(classType);
+        auto &Index =
+            std::find_if(Components.begin(), Components.end(), [ComponentType = ComponentType::Type](auto &Component) {
+                return Component->IsClassType(ComponentType);
             });
 
-        success = index != components.end();
+        Success = Index != Components.end();
 
-        if (success)
+        if (Success)
         {
-            components.erase(index);
-            ++numRemoved;
+            Components.erase(Index);
+            ++NumRemoved;
         }
-    } while (success);
+    } while (Success);
 
-    return numRemoved;
+    return NumRemoved;
 }

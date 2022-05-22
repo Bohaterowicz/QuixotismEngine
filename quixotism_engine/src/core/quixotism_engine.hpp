@@ -1,4 +1,5 @@
 #pragma once
+#include "camera.hpp"
 #include "opengl_renderer.hpp"
 #include "quixotism_c.hpp"
 #include "quixotism_platform_services.hpp"
@@ -7,8 +8,8 @@
 
 struct quixotism_window_info
 {
-    int32 Width;
-    int32 Height;
+    int32 Width = 0;
+    int32 Height = 0;
 };
 
 class quixotism_engine
@@ -31,7 +32,7 @@ class quixotism_engine
     ~quixotism_engine() = default;
 
     void UpdateAndRender() noexcept;
-    void UpdateWindowInfo(quixotism_window_info WindowInfo) noexcept
+    void UpdateWindowInfo(quixotism_window_info &WindowInfo) noexcept
     {
         Window = WindowInfo;
     }
@@ -42,11 +43,17 @@ class quixotism_engine
         return PlatformServices.GetTime();
     }
 
+    _NODISCARD quixotism_window_info GetWindowInfo()
+    {
+        return Window;
+    }
+
   private:
     quixotism_window_info Window = {};
     std::unique_ptr<opengl_renderer> Renderer = nullptr;
 
-    shader_program Shader;
+    shader_program Shader{};
+    std::unique_ptr<camera> Camera = nullptr;
 };
 
 extern std::unique_ptr<quixotism_engine> QuixotismEngine;

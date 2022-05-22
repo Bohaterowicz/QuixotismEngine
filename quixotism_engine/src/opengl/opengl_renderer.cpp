@@ -4,6 +4,7 @@
 
 opengl_renderer::opengl_renderer() noexcept
 {
+    GLCall(glEnable(GL_DEPTH_TEST));
     GLCall(glClearColor(0.5F, 0.5F, 0.5F, 1.0F));
     GLCall(glClearDepth(1.0F));
     GLCall(glClearStencil(0));
