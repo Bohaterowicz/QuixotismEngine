@@ -2,7 +2,7 @@
 #include "quixotism_engine.hpp"
 #include "quixotism_math.hpp"
 
-camera::camera()
+camera::camera() : entity{entity_type::CAMERA}
 {
     AddComponent<transform>();
     InitPerspectiveProjectionDefault();
@@ -10,7 +10,7 @@ camera::camera()
     CurrentProjectionMtx = CalculateProjectionMatrix();
 }
 
-camera::camera(perspective_projection_info &Info)
+camera::camera(perspective_projection_info &Info) : entity{entity_type::CAMERA}
 {
     AddComponent<transform>();
     SetPerspectiveProjectionInfo(Info);
@@ -18,7 +18,8 @@ camera::camera(perspective_projection_info &Info)
     CurrentProjectionMtx = CalculateProjectionMatrix();
 }
 
-camera::camera(orthographic_projection_info &Info) : ProjectionType{projection_type::ORTHOGRAPHIC}
+camera::camera(orthographic_projection_info &Info)
+    : entity{entity_type::CAMERA}, ProjectionType{projection_type::ORTHOGRAPHIC}
 {
     AddComponent<transform>();
     SetOrthographicProjectionInfo(Info);
@@ -36,14 +37,18 @@ void camera::SetPerspectiveProjectionInfo(perspective_projection_info &Info)
 {
     PerspectiveProjectionInfo = Info;
     if (ProjectionType == projection_type::PERSPECTIVE)
+    {
         CurrentProjectionMtx = CalculateProjectionMatrix();
+    }
 }
 
 void camera::SetOrthographicProjectionInfo(orthographic_projection_info &Info)
 {
     OrthographicProjectionInfo = Info;
     if (ProjectionType == projection_type::ORTHOGRAPHIC)
+    {
         CurrentProjectionMtx = CalculateProjectionMatrix();
+    }
 }
 
 void camera::InitPerspectiveProjectionDefault()
@@ -64,19 +69,21 @@ void camera::InitOrthographicProjectionDefault()
     OrthographicProjectionInfo.Right = static_cast<real32>(Height);
 }
 
-glm::mat4 camera::CalculateProjectionMatrix()
+glm::mat4 camera::CalculateProjectionMatrix() const
 {
+    glm::mat4 Projection{};
     if (ProjectionType == projection_type::PERSPECTIVE)
     {
-        return CalculatePerspectiveProjectionMatrix();
+        Projection = CalculatePerspectiveProjectionMatrix();
     }
     else
     {
-        return ClaculateOrthographicProjectionMatrix();
+        Projection = ClaculateOrthographicProjectionMatrix();
     }
+    return Projection;
 }
 
-glm::mat4 camera::CalculatePerspectiveProjectionMatrix()
+glm::mat4 camera::CalculatePerspectiveProjectionMatrix() const
 {
     glm::mat4 Projection = glm::mat4(0.0F);
     auto Scale = 1 / Tan((PerspectiveProjectionInfo.FOV / 2.0F) * (Pi32 / 180.0F));
@@ -91,7 +98,7 @@ glm::mat4 camera::CalculatePerspectiveProjectionMatrix()
     return Projection;
 }
 
-glm::mat4 camera::ClaculateOrthographicProjectionMatrix()
+glm::mat4 camera::ClaculateOrthographicProjectionMatrix() const
 {
     glm::mat4 Projection = glm::mat4(0.0F);
     Projection[0][0] = 2.0F / (OrthographicProjectionInfo.Right - OrthographicProjectionInfo.Left);
@@ -125,4 +132,41 @@ glm::mat4 camera::GetViewMatrix()
     RotationTransform = glm::transpose(RotationTransform);
 
     return RotationTransform * PositionTransform;
+}
+
+void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
+{
+    auto Controller = Input.GetKeybaordController();
+    auto &Transform = GetComponent<transform>();
+    auto Speed = 1.0F; // m/s
+    auto Movement = glm::vec3{0.0F};
+    if (Controller.Up.EndedDown)
+    {
+        Movement += transform::EngineUp;
+    }
+    if (Controller.Down.EndedDown)
+    {
+        Movement += -transform::EngineUp;
+    }
+    if (Controller.Forward.EndedDown)
+    {
+        Movement += Transform.GetForward();
+    }
+    if (Controller.Backward.EndedDown)
+    {
+        Movement += -Transform.GetForward();
+    }
+    if (Controller.Right.EndedDown)
+    {
+        Movement += Transform.GetRight();
+    }
+    if (Controller.Left.EndedDown)
+    {
+        Movement += -Transform.GetRight();
+    }
+    if (glm::length(Movement) > 0.0F)
+    {
+        Movement = glm::normalize(Movement);
+    }
+    Transform.Move(Movement * Speed * DeltaTime);
 }

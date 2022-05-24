@@ -324,11 +324,35 @@ void Win32ProcessWindowMessages(HWND Window, win32_app_state &AppState, engine_i
                         }
                     }
                 }
-                else if (VKCode == VK_ESCAPE)
+                if (VKCode == 'E')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Up, IsDown);
+                }
+                if (VKCode == 'Q')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Down, IsDown);
+                }
+                if (VKCode == 'W')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Forward, IsDown);
+                }
+                if (VKCode == 'S')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Backward, IsDown);
+                }
+                if (VKCode == 'D')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Right, IsDown);
+                }
+                if (VKCode == 'A')
+                {
+                    Win32ProcessKeyboardInput(KeyboardController.Left, IsDown);
+                }
+                if (VKCode == VK_ESCAPE)
                 {
                     AppState.Stop();
                 }
-                else if (VKCode == VK_F4 && AltKeyWasDown)
+                if (VKCode == VK_F4 && AltKeyWasDown)
                 {
                     AppState.Stop();
                 }
@@ -405,6 +429,8 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
             PlatformServices.ReadFile = Win32ReadFile;
             PlatformServices.GetTime = GetRunningTime;
 
+            real32 TargetDeltaTime = 1.0F / 144.0F;
+
             QuixotismEngine = std::make_unique<quixotism_engine>(WindowInfo, PlatformServices);
             QuixotismEngine->Init();
 
@@ -416,7 +442,7 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
                 Win32ProcessWindowMessages(Window, AppState, NewInput);
                 Win32ProcessMouseMovement(Window, AppState, NewInput);
 
-                QuixotismEngine->UpdateAndRender();
+                QuixotismEngine->UpdateAndRender(*NewInput, TargetDeltaTime);
 
                 HDC WindowDC = GetDC(Window);
                 SwapBuffers(WindowDC);

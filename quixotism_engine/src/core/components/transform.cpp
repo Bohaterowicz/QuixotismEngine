@@ -1,6 +1,6 @@
 #include "transform.hpp"
-#include <GLM/gtc/quaternion.hpp>
-#include <GLM/gtx/quaternion.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 COMPONENT_DEFINITION(transform, component);
 
@@ -17,6 +17,21 @@ glm::vec3 transform::GetForward()
     auto RotationMatrix = glm::toMat3(glm::normalize(Yaw * Pitch * Roll));
     auto ForwardVector = EngineForward * RotationMatrix;
     return glm::normalize(ForwardVector);
+}
+
+glm::vec3 transform::GetRight()
+{
+    auto Forward = GetForward();
+    auto RightVector = glm::cross(Forward, EngineUp);
+    return glm::normalize(RightVector);
+}
+
+glm::vec3 transform::GetLocalUp()
+{
+    auto Forward = GetForward();
+    auto RightVector = glm::cross(Forward, EngineUp);
+    auto LocalUpVector = glm::cross(Forward, RightVector);
+    return glm::normalize(LocalUpVector);
 }
 
 glm::mat4 transform::GetTransformationMatrix()

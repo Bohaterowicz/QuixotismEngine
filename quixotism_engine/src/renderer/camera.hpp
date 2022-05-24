@@ -2,7 +2,7 @@
 #include "components/transform.hpp"
 #include "entity.hpp"
 #include "quixotism_c.hpp"
-#include <GLM/glm.hpp>
+#include <glm/glm.hpp>
 
 enum class projection_type : int8
 {
@@ -55,15 +55,17 @@ class camera : public entity
 
     _NODISCARD glm::mat4 GetViewMatrix();
 
+    void ProcessInput(engine_input &Input, real32 DeltaTime) override;
+
   private:
     void InitPerspectiveProjectionDefault();
     void InitOrthographicProjectionDefault();
-    glm::mat4 CalculateProjectionMatrix();
-    glm::mat4 CalculatePerspectiveProjectionMatrix();
-    glm::mat4 ClaculateOrthographicProjectionMatrix();
+    _NODISCARD glm::mat4 CalculateProjectionMatrix() const;
+    _NODISCARD glm::mat4 CalculatePerspectiveProjectionMatrix() const;
+    _NODISCARD glm::mat4 ClaculateOrthographicProjectionMatrix() const;
 
     projection_type ProjectionType = projection_type::PERSPECTIVE;
     perspective_projection_info PerspectiveProjectionInfo = {};
     orthographic_projection_info OrthographicProjectionInfo = {};
-    glm::mat4 CurrentProjectionMtx;
+    glm::mat4 CurrentProjectionMtx = {};
 };

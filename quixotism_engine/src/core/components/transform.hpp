@@ -1,7 +1,7 @@
 #pragma once
 #include "component.hpp"
 #include "quixotism_c.hpp"
-#include <GLM/glm.hpp>
+#include <glm/glm.hpp>
 
 class transform : public component
 {
@@ -44,7 +44,14 @@ class transform : public component
         return Scale;
     }
 
+    void Move(glm::vec3 Delta)
+    {
+        Position += Delta;
+    }
+
     _NODISCARD glm::vec3 GetForward();
+    _NODISCARD glm::vec3 GetRight();
+    _NODISCARD glm::vec3 GetLocalUp();
 
     _NODISCARD glm::mat4 GetTransformationMatrix();
 

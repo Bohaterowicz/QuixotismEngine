@@ -1,4 +1,5 @@
 #include "quixotism_engine.hpp"
+#include "camera.hpp"
 #include "gl_sampler.hpp"
 #include "index_buffer.hpp"
 #include "mesh_data.hpp"
@@ -17,6 +18,7 @@ std::unique_ptr<gl_sampler> Sampler;
 
 void quixotism_engine::Init()
 {
+    AddEntity<entity>();
     Renderer = std::make_unique<opengl_renderer>();
     Renderer->SetClearColor(1.0, 0.0, 0.0);
     Shader.AddVertexAndShaderSoruce("../../quixotism_engine/data/shaders/no_transform.vert",
@@ -73,22 +75,35 @@ void quixotism_engine::Init()
     Sampler->SetBindSlot(0);
     Texture1->SetBindSlot(0);
 
-    Camera = std::make_unique<camera>();
-    auto &ct = Camera->GetComponent<transform>();
-    ct.SetPosition(glm::vec3(-1.0F, 0.0F, 1.0F));
-    ct.SetRotation(glm::vec3(0.0F, -45.0F, 0.0F));
+    auto CameraEntityIndex = AddEntity<camera>();
+    ControlledCameraIndex = CameraEntityIndex;
+
+    auto *CameraEntity = GetEntity(CameraEntityIndex);
+
+    auto &CameraTransform = CameraEntity->GetComponent<transform>();
+    CameraTransform.SetPosition(glm::vec3(-1.0F, 0.0F, 1.0F));
+    CameraTransform.SetRotation(glm::vec3(0.0F, -45.0F, 0.0F));
 }
 
-void quixotism_engine::UpdateAndRender() noexcept
+void quixotism_engine::UpdateAndRender(engine_input &Input, real32 DeltaTime) noexcept
 {
     // auto t = GetTime();
     // auto GreenValue = Sin(static_cast<real32>(t)) / 2.0F + 0.5F;
     // auto Color = glm::vec4(0.0F, GreenValue, 0.0F, 1.0F);
 
+    auto *ControlledEntity = GetEntity(ControlledCameraIndex);
+    ControlledEntity->ProcessInput(Input, DeltaTime);
+
+    for (auto &Entity : Entities)
+    {
+        Entity->Update();
+    }
+
     Renderer->ClearRenderTarget(Window.Width, Window.Height);
     Shader.Bind();
     // Shader.SetUniform4f("Color", Color);
     Shader.SetUniform1i("TextureSampler", 0);
+    auto *Camera = static_cast<camera *>(GetEntity(ControlledCameraIndex));
     auto MVP = Camera->GetProjectionMatrix() * Camera->GetViewMatrix();
     Shader.SetUniformMtx4("MVP", MVP);
     Sampler->Bind();

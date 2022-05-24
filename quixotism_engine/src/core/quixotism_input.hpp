@@ -3,7 +3,7 @@
 #include <array>
 
 const uint32 MAX_SUPPORTED_CONTROLLERS = 5;
-const uint32 SUPPORTED_CONTROLLERS_BUTTONS_COUNT = 12;
+const uint32 SUPPORTED_CONTROLLERS_BUTTONS_COUNT = 14;
 const uint32 SUPPORTED_MOUSE_BUTTON_COUNT = 5;
 
 // IMPORTANT: the value of each of the button types correspands to index in the MouseButtons array, thus the values MUST
@@ -40,6 +40,8 @@ struct controller_input
             button_state Up;
             button_state Down;
             button_state Left;
+            button_state Forward;
+            button_state Backward;
             button_state Right;
             button_state A;
             button_state B;

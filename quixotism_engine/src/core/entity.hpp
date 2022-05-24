@@ -1,26 +1,53 @@
 #pragma once
 #include "components/component.hpp"
 #include "quixotism_c.hpp"
+#include "quixotism_input.hpp"
 
 #include <memory>
 #include <vector>
 
+enum class entity_type
+{
+    NO_TYPE,
+    ACTOR,
+    CAMERA,
+    LIGHT,
+    POSTPROCESS_VOLUME,
+};
+
 class entity
 {
   public:
-    entity() = default;
+    explicit entity(entity_type Type = entity_type::NO_TYPE) : EntityType{Type}
+    {
+    }
 
     template <class ComponentType, typename... Args> bool32 AddComponent(Args &&...params);
-
     template <class ComponentType> ComponentType &GetComponent();
-
     template <class ComponentType> bool32 RemoveComponent();
-
     template <class ComponentType> std::vector<ComponentType *> GetComponents();
-
     template <class ComponentType> int32 RemoveComponents();
 
+    _NODISCARD bool32 Is(entity_type Type) const
+    {
+        return EntityType == Type;
+    }
+
+    _NODISCARD entity_type GetType() const
+    {
+        return EntityType;
+    }
+
+    virtual void Update()
+    {
+    }
+
+    virtual void ProcessInput(engine_input &Input, real32 DeltaTime)
+    {
+    }
+
   private:
+    entity_type EntityType = entity_type::NO_TYPE;
     std::vector<std::unique_ptr<component>> Components = {};
 };
 

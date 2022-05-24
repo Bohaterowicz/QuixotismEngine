@@ -1,7 +1,8 @@
 #pragma once
-#include "camera.hpp"
+#include "entity.hpp"
 #include "opengl_renderer.hpp"
 #include "quixotism_c.hpp"
+#include "quixotism_input.hpp"
 #include "quixotism_platform_services.hpp"
 #include "shader_program.hpp"
 #include <memory>
@@ -31,7 +32,7 @@ class quixotism_engine
     quixotism_engine &operator=(quixotism_engine &&) = default;
     ~quixotism_engine() = default;
 
-    void UpdateAndRender() noexcept;
+    void UpdateAndRender(engine_input &Input, real32 DeltaTime) noexcept;
     void UpdateWindowInfo(quixotism_window_info &WindowInfo) noexcept
     {
         Window = WindowInfo;
@@ -48,13 +49,33 @@ class quixotism_engine
         return Window;
     }
 
+    template <class EntityType, typename... Args> size AddEntity(Args &&...params);
+
+    entity *GetEntity(size Index)
+    {
+        if (Index > 0 && Index <= Entities.size())
+        {
+            return Entities[Index].get();
+        }
+        return nullptr;
+    }
+
   private:
+    std::vector<std::unique_ptr<entity>> Entities;
+
     quixotism_window_info Window = {};
     std::unique_ptr<opengl_renderer> Renderer = nullptr;
 
     shader_program Shader{};
-    std::unique_ptr<camera> Camera = nullptr;
+    size ControlledCameraIndex = 0;
 };
+
+template <class EntityType, typename... Args> size quixotism_engine::AddEntity(Args &&...params)
+{
+    auto Index = Entities.size();
+    Entities.emplace_back(std::make_unique<EntityType>(std::forward<Args>(params)...));
+    return Index;
+}
 
 extern std::unique_ptr<quixotism_engine> QuixotismEngine;
 
