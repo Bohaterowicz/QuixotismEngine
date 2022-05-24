@@ -8,7 +8,7 @@
 const uint32 SwapIntervalCount = 1;
 
 // Window Init parameters
-const int32 InitWindowPosX = 200;
+const int32 InitWindowPosX = 600;
 const int32 InitWindowPosY = 200;
 const int32 InitWindowClientWidth = 800;
 const int32 InitWindowClientHeight = 600;

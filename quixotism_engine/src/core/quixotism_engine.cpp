@@ -81,8 +81,8 @@ void quixotism_engine::Init()
     auto *CameraEntity = GetEntity(CameraEntityIndex);
 
     auto &CameraTransform = CameraEntity->GetComponent<transform>();
-    CameraTransform.SetPosition(glm::vec3(-1.0F, 0.0F, 1.0F));
-    CameraTransform.SetRotation(glm::vec3(0.0F, -45.0F, 0.0F));
+    CameraTransform.SetPosition(glm::vec3(0.0F, 0.0F, -1.0F));
+    CameraTransform.SetRotation(glm::vec3(0.0F, 90.0F, 0.0F));
 }
 
 void quixotism_engine::UpdateAndRender(engine_input &Input, real32 DeltaTime) noexcept

@@ -17,6 +17,8 @@
 #include <memory>
 #include <string>
 
+#define GLM_FORCE_RADIANS
+
 INTERNAL auto *Win32GetAppState(HWND Window)
 {
     LONG_PTR Ptr = GetWindowLongPtr(Window, GWLP_USERDATA);
@@ -46,6 +48,9 @@ INTERNAL void Win32ProcessMouseMovement(HWND Window, win32_app_state &AppState, 
     const auto [ClientWidth, ClientHeight] = AppState.GetClientDimensions();
     int32 CenterX = ClientWidth / 2;
     int32 CenterY = ClientHeight / 2;
+
+    ScreenToClient(Window, &MousePos);
+
     auto XDiff = static_cast<real32>(MousePos.x - CenterX);
     auto YDiff = static_cast<real32>(MousePos.y - CenterY);
 
@@ -384,8 +389,6 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
     }
 #endif
 
-    const real32 TargetSecondsPerFrame = 0.1667F;
-
     // Creating our window class
     WNDCLASSEXA WindowClass = {};
     WindowClass.cbSize = sizeof(WNDCLASSEXA);
@@ -420,10 +423,12 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
             engine_input *NewInput = &Input[0];
             engine_input *PrevInput = &Input[1];
 
-            NewInput->SetTimeStep(TargetSecondsPerFrame);
-
             const auto [Width, Height] = AppState.GetClientDimensions();
             quixotism_window_info WindowInfo = {Width, Height};
+
+            POINT CenterPos = {Width / 2, Height / 2};
+            ClientToScreen(Window, &CenterPos);
+            SetCursorPos(CenterPos.x, CenterPos.y);
 
             platform_services PlatformServices = {};
             PlatformServices.ReadFile = Win32ReadFile;

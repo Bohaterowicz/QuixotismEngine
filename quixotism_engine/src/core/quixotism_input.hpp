@@ -62,9 +62,6 @@ class engine_input
 {
   public:
     engine_input() = default;
-    explicit engine_input(real32 TargetTimeStep) noexcept : TimeStep{TargetTimeStep}
-    {
-    }
 
     auto &GetController(uint32 Index) noexcept
     {
@@ -90,20 +87,15 @@ class engine_input
         return MouseButtons[static_cast<uint8>(ButtonType)];
     }
 
-    [[nodiscard]] auto GetTimeStep() const noexcept
-    {
-        return TimeStep;
-    }
-
-    void SetTimeStep(real32 _TimeStep) noexcept
-    {
-        TimeStep = _TimeStep;
-    }
-
     void SetCursorPositionChange(real32 DeltaX, real32 DeltaY) noexcept
     {
         MouseDeltaX = DeltaX;
         MouseDeltaY = DeltaY;
+    }
+
+    _NODISCARD std::pair<real32, real32> GetMouseDelta() const
+    {
+        return std::make_pair(MouseDeltaX, MouseDeltaY);
     }
 
   private:
@@ -112,5 +104,4 @@ class engine_input
 
     real32 MouseDeltaX = 0;
     real32 MouseDeltaY = 0;
-    real32 TimeStep = 0.0F;
 };

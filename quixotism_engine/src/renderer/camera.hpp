@@ -15,6 +15,7 @@ struct perspective_projection_info
     real32 NearPlane = 0.0F;
     real32 FarPlane = 0.0F;
     real32 FOV = 0.0F;
+    real32 AspectRatio = 0.0F;
 };
 
 struct orthographic_projection_info

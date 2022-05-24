@@ -10,13 +10,9 @@ const glm::vec3 transform::EngineUp = glm::vec3{0.0F, 1.0F, 0.0F};
 
 glm::vec3 transform::GetForward()
 {
-    auto Pitch = glm::angleAxis(glm::radians(Rotation[0]), EngineRight);
-    auto Yaw = glm::angleAxis(glm::radians(Rotation[1]), EngineUp);
-    auto Roll = glm::angleAxis(glm::radians(Rotation[2]), EngineForward);
-
-    auto RotationMatrix = glm::toMat3(glm::normalize(Yaw * Pitch * Roll));
-    auto ForwardVector = EngineForward * RotationMatrix;
-    return glm::normalize(ForwardVector);
+    auto RotationMatrix = glm::mat3(glm::quat(glm::radians(Rotation)));
+    auto Forward = EngineForward * RotationMatrix;
+    return glm::normalize(Forward);
 }
 
 glm::vec3 transform::GetRight()
@@ -29,16 +25,16 @@ glm::vec3 transform::GetRight()
 glm::vec3 transform::GetLocalUp()
 {
     auto Forward = GetForward();
-    auto RightVector = glm::cross(Forward, EngineUp);
-    auto LocalUpVector = glm::cross(Forward, RightVector);
+    auto RightVector = glm::normalize(glm::cross(Forward, EngineUp));
+    auto LocalUpVector = glm::cross(RightVector, Forward);
     return glm::normalize(LocalUpVector);
 }
 
 glm::mat4 transform::GetTransformationMatrix()
 {
-    auto Pitch = glm::angleAxis(glm::radians(Rotation[0]), EngineRight);
-    auto Yaw = glm::angleAxis(glm::radians(Rotation[1]), EngineUp);
-    auto Roll = glm::angleAxis(glm::radians(Rotation[2]), EngineForward);
+    auto Pitch = glm::angleAxis(glm::radians(Rotation.x), EngineRight);
+    auto Yaw = glm::angleAxis(glm::radians(Rotation.y), EngineUp);
+    auto Roll = glm::angleAxis(glm::radians(Rotation.z), EngineForward);
 
     auto RotationMatrix = glm::toMat4(glm::normalize(Yaw * Pitch * Roll));
 
@@ -51,4 +47,9 @@ glm::mat4 transform::GetTransformationMatrix()
     ScaleMatrix[2][2] *= Scale.z;
 
     return PositionMatrix * RotationMatrix * ScaleMatrix;
+}
+
+void transform::Rotate(glm::vec3 EulerAnglesDelta)
+{
+    Rotation += EulerAnglesDelta;
 }

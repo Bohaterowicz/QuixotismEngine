@@ -2,6 +2,10 @@
 #include "quixotism_engine.hpp"
 #include "quixotism_math.hpp"
 
+#include <glm/gtc/matrix_transform.hpp>
+
+#include "debug_out.hpp"
+
 camera::camera() : entity{entity_type::CAMERA}
 {
     AddComponent<transform>();
@@ -53,16 +57,18 @@ void camera::SetOrthographicProjectionInfo(orthographic_projection_info &Info)
 
 void camera::InitPerspectiveProjectionDefault()
 {
-    PerspectiveProjectionInfo.NearPlane = 0.01F;
-    PerspectiveProjectionInfo.FarPlane = 1000.0F;
-    PerspectiveProjectionInfo.FOV = 90.0F;
+    auto const [Width, Height] = GetEngine()->GetWindowInfo();
+    PerspectiveProjectionInfo.NearPlane = 0.1F;
+    PerspectiveProjectionInfo.FarPlane = 100.0F;
+    PerspectiveProjectionInfo.FOV = 60.0F;
+    PerspectiveProjectionInfo.AspectRatio = static_cast<real32>(Width) / static_cast<real32>(Height);
 }
 
 void camera::InitOrthographicProjectionDefault()
 {
     auto const [Width, Height] = GetEngine()->GetWindowInfo();
-    OrthographicProjectionInfo.NearPlane = 0.01F;
-    OrthographicProjectionInfo.FarPlane = 1000.0F;
+    OrthographicProjectionInfo.NearPlane = 0.1F;
+    OrthographicProjectionInfo.FarPlane = 100.0F;
     OrthographicProjectionInfo.Left = 0.0F;
     OrthographicProjectionInfo.Bottom = 0.0F;
     OrthographicProjectionInfo.Top = static_cast<real32>(Width);
@@ -86,13 +92,12 @@ glm::mat4 camera::CalculateProjectionMatrix() const
 glm::mat4 camera::CalculatePerspectiveProjectionMatrix() const
 {
     glm::mat4 Projection = glm::mat4(0.0F);
-    auto Scale = 1 / Tan((PerspectiveProjectionInfo.FOV / 2.0F) * (Pi32 / 180.0F));
-    Projection[0][0] = Scale;
-    Projection[1][1] = Scale;
-    Projection[2][2] = -PerspectiveProjectionInfo.FarPlane /
+    Projection[0][0] = 1 / (PerspectiveProjectionInfo.AspectRatio * Tan(glm::radians(PerspectiveProjectionInfo.FOV / 2)));
+    Projection[1][1] = 1 / Tan(glm::radians(PerspectiveProjectionInfo.FOV / 2));
+    Projection[2][2] = -(PerspectiveProjectionInfo.FarPlane + PerspectiveProjectionInfo.NearPlane) /
                        (PerspectiveProjectionInfo.FarPlane - PerspectiveProjectionInfo.NearPlane);
     Projection[2][3] = -1.0F;
-    Projection[3][2] = -(PerspectiveProjectionInfo.FarPlane * PerspectiveProjectionInfo.NearPlane) /
+    Projection[3][2] = -(2.0F * PerspectiveProjectionInfo.FarPlane * PerspectiveProjectionInfo.NearPlane) /
                        (PerspectiveProjectionInfo.FarPlane - PerspectiveProjectionInfo.NearPlane);
 
     return Projection;
@@ -118,13 +123,13 @@ glm::mat4 camera::ClaculateOrthographicProjectionMatrix() const
 glm::mat4 camera::GetViewMatrix()
 {
     auto CameraTransform = GetComponent<transform>();
-    auto ForwardVector = CameraTransform.GetForward();
 
     auto PositionTransform = glm::mat4(1.0F);
     PositionTransform[3] = glm::vec4(-CameraTransform.GetPosition(), 1.0F);
 
-    auto RightVector = glm::normalize(glm::cross(ForwardVector, transform::EngineUp));
-    auto LocalUpVector = glm::normalize(glm::cross(RightVector, ForwardVector));
+    auto ForwardVector = CameraTransform.GetForward();
+    auto RightVector = CameraTransform.GetRight();
+    auto LocalUpVector = CameraTransform.GetLocalUp();
     auto RotationTransform = glm::mat4(1.0F);
     RotationTransform[0] = glm::vec4(RightVector, 0.0F);
     RotationTransform[1] = glm::vec4(LocalUpVector, 0.0F);
@@ -139,6 +144,7 @@ void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
     auto Controller = Input.GetKeybaordController();
     auto &Transform = GetComponent<transform>();
     auto Speed = 1.0F; // m/s
+    auto RotationSpeed = 10.0F;
     auto Movement = glm::vec3{0.0F};
     if (Controller.Up.EndedDown)
     {
@@ -169,4 +175,18 @@ void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
         Movement = glm::normalize(Movement);
     }
     Transform.Move(Movement * Speed * DeltaTime);
+
+    auto const [Dx, Dy] = Input.GetMouseDelta();
+    auto RotationDelta = glm::vec3{-Dy, Dx, 0.0F} * RotationSpeed * DeltaTime;
+
+    auto m = std::to_string(Transform.GetRotation().x) + " - " + std::to_string(Transform.GetRotation().y) + " - " +
+             std::to_string(Transform.GetRotation().z);
+    DEBUG_OUT(m.c_str());
+
+    Transform.Rotate(RotationDelta);
+
+    auto f = Transform.GetForward();
+
+    m = std::to_string(f.x) + " = " + std::to_string(f.y) + " = " + std::to_string(f.z);
+    DEBUG_OUT(m.c_str());
 }
