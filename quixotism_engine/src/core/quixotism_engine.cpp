@@ -10,6 +10,7 @@
 #include "vertex_array.hpp"
 #include "vertex_buffer.hpp"
 #include "vertex_buffer_layout.hpp"
+#include "quixobj/src/quixobj.hpp"
 
 std::unique_ptr<quixotism_engine> QuixotismEngine;
 std::unique_ptr<static_mesh> SMesh;
@@ -80,9 +81,12 @@ void quixotism_engine::Init()
 
     auto *CameraEntity = GetEntity(CameraEntityIndex);
 
+    auto FileReadResult = PlatformServices.ReadFile("../../quixotism_engine/data/meshes/cube.obj");
+    auto Result = qobj::ParseOBJ(FileReadResult.Content.get(), FileReadResult.Size);
+
     auto &CameraTransform = CameraEntity->GetComponent<transform>();
     CameraTransform.SetPosition(glm::vec3(0.0F, 0.0F, -1.0F));
-    CameraTransform.SetRotation(glm::vec3(0.0F, 90.0F, 0.0F));
+    CameraTransform.SetRotation(glm::vec3(0.0F, -90.0F, 0.0F));
 }
 
 void quixotism_engine::UpdateAndRender(engine_input &Input, real32 DeltaTime) noexcept
