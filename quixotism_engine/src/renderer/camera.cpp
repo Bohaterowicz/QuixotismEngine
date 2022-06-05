@@ -185,5 +185,33 @@ void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
     if (glm::length(RotationDelta) > 0.0F)
     {
         Transform.Rotate(RotationDelta);
+        if (Transform.GetRotation().x > 85.0)
+        {
+            auto RotationAdjustment = glm::vec3{};
+            auto Adjustment = 85.0F - Transform.GetRotation().x;
+            if (Adjustment < -0.01)
+            {
+                RotationAdjustment.x = Adjustment;
+                Transform.Rotate(RotationAdjustment);
+            }
+            else
+            {
+                Transform.SetRotation(glm::vec3{85.0, Transform.GetRotation().y, 0.0});
+            }
+        }
+        else if (Transform.GetRotation().x < -85.0)
+        {
+            auto RotationAdjustment = glm::vec3{};
+            auto Adjustment = -85.0F + Transform.GetRotation().x;
+            if (Adjustment > 0.01)
+            {
+                RotationAdjustment.x = Adjustment;
+                Transform.Rotate(RotationAdjustment);
+            }
+            else
+            {
+                Transform.SetRotation(glm::vec3{-85.0, Transform.GetRotation().y, 0.0});
+            }
+        }
     }
 }

@@ -241,6 +241,7 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
         if (WParam == TRUE)
         {
             // Window is being activated
+            AppState->EnableInputGathering();
             RECT PreviousCursorClip;
             GetClipCursor(&PreviousCursorClip);
             RECT WindowCursorClip;
@@ -251,6 +252,7 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND Window, UINT Message, WPARA
         else
         {
             // Window is being deactivated
+            AppState->DisableInputGathering();
             auto PreviousCursorClip = AppState->GetPreviousCursorClip();
             ClipCursor(&PreviousCursorClip);
             AppState->DisableCursorTrap();
@@ -446,6 +448,11 @@ int CALLBACK WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, 
             {
                 Win32ProcessWindowMessages(Window, AppState, NewInput);
                 Win32ProcessMouseMovement(Window, AppState, NewInput);
+
+                if (!AppState.IsGatheringInput())
+                {
+                    *NewInput = {};
+                }
 
                 QuixotismEngine->UpdateAndRender(*NewInput, TargetDeltaTime);
 

@@ -86,17 +86,32 @@ class win32_app_state
         TrapCursor = TRUE;
     }
 
+    void EnableInputGathering()
+    {
+        GatherInput = true;
+    }
+
+    void DisableInputGathering()
+    {
+        GatherInput = false;
+    }
+
+    _NODISCARD bool32 IsGatheringInput() const
+    {
+        return GatherInput;
+    }
+
     void DisableCursorTrap() noexcept
     {
         TrapCursor = FALSE;
     }
 
-    [[nodiscard]] auto IsCursorTrapped() const noexcept
+    _NODISCARD auto IsCursorTrapped() const noexcept
     {
         return TrapCursor;
     }
 
-    [[nodiscard]] auto IsCursorHidden() const noexcept
+    _NODISCARD auto IsCursorHidden() const noexcept
     {
         return CursorHidden;
     }
@@ -113,9 +128,11 @@ class win32_app_state
     int32 Height;
 
     // Variable controlling if the app has been started (main app loop)
-    bool32 Running;
+    bool32 Running = false;
 
-    bool32 Paused;
+    bool32 Paused = false;
+
+    bool32 GatherInput = true;
 
     // Cursor trap variables
     bool32 TrapCursor = FALSE;
