@@ -29,7 +29,7 @@ message("COMPILE OPTION ADDED: -Oi ----> Build will be built with intrinsic supp
 add_compile_options(-wd4201 -wd4100)
 message("COMPILE OPTION ADDED: -wd4201 -wd4100 ----> Those warnings will be disabled")
 
-add_subdirectory(quixobj)
+add_subdirectory(quixmesh)
 add_subdirectory(quixotism_engine)
 
 INCLUDE_DIRECTORIES(./external/GLEW/include ./common ./quixotism_engine/src/core ./quixotism_engine/src/win32)

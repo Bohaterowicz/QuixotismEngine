@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace qobj
+namespace qmesh
 {
 
 enum class error
@@ -36,16 +36,30 @@ struct texture_coordinates
     };
 };
 
-struct object_indicies
+struct vertex_normals
 {
-    int32 I[3];
+    union {
+        real32 E[3];
+        struct
+        {
+            real32 X, Y, Z;
+        };
+    };
+};
+
+struct object_face
+{
+    uint32 PosIdx[3];
+    uint32 TexCoordIdx[3];
+    uint32 NormalIdx[3];
 };
 
 struct object_mesh
 {
     std::vector<vertex_position> VertexPositions;
     std::vector<texture_coordinates> TextureCoordinates;
-    std::vector<object_indicies> Indicies;
+    std::vector<vertex_normals> VertexNormals;
+    std::vector<object_face> Faces;
     std::string ObjectName{};
     bool32 NotTriangulated = false;
 };
@@ -56,4 +70,4 @@ struct obj_data
 };
 
 std::unique_ptr<obj_data> ParseOBJ(const void *ObjFileData, size FileSize);
-} // namespace qobj
+} // namespace qmesh

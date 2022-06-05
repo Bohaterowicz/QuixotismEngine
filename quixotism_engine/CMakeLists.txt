@@ -10,4 +10,4 @@ target_include_directories(QuixotismEngine PUBLIC ./src/util ./src/renderer ./sr
 find_library(GLEW_LIB glew32s HINTS external/GLEW/lib)
 find_package(OpenGL REQUIRED)
 
-target_link_libraries(QuixotismEngine QuixOBJ ${GLEW_LIB} opengl32)
+target_link_libraries(QuixotismEngine QuixMesh ${GLEW_LIB} opengl32)

@@ -3,9 +3,18 @@
 #include <string>
 #include <vector>
 
+enum class layout_element_type
+{
+    UNDEFINED,
+    POSITION,
+    NORMAL,
+    TEXCOORD,
+    VERTEXCOLOR,
+};
+
 struct layout_element
 {
-    const char *Name = "";
+    layout_element_type ElementType = layout_element_type::UNDEFINED;
     uint32 Type = 0;
     size TypeSize = 0;
     uint32 Count = 0;
@@ -17,9 +26,9 @@ class vertex_buffer_layout
 {
   public:
     vertex_buffer_layout() = default;
-    void AddLayoutElementF(uint32 Count, const char *ElementName, bool32 Normalize);
-    void AddLayoutElementUI(uint32 Count, const char *ElementName, bool32 Normalize);
-    void AddLayoutElementUB(uint32 Count, const char *ElementName, bool32 Normalize);
+    void AddLayoutElementF(layout_element_type ElementType, uint32 Count, bool32 Normalize);
+    void AddLayoutElementUI(layout_element_type ElementType, uint32 Count, bool32 Normalize);
+    void AddLayoutElementUB(layout_element_type ElementType, uint32 Count, bool32 Normalize);
 
     _NODISCARD const std::vector<layout_element> &GetLayout() const
     {
@@ -35,5 +44,5 @@ class vertex_buffer_layout
     std::vector<layout_element> LayoutElements = {};
     size Stride = 0;
 
-    void AddLayoutElement(uint32 Count, const char *Name, bool32 Normalize, uint32 Type, size TypeSize);
+    void AddLayoutElement(layout_element_type ElementType, uint32 Count, bool32 Normalize, uint32 Type, size TypeSize);
 };

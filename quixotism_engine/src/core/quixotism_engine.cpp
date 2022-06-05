@@ -1,8 +1,10 @@
 #include "quixotism_engine.hpp"
 #include "camera.hpp"
+#include "debug_out.hpp"
 #include "gl_sampler.hpp"
 #include "index_buffer.hpp"
 #include "mesh_data.hpp"
+#include "quixmesh/src/quixmesh.hpp"
 #include "quixotism_math.hpp"
 #include "static_mesh.hpp"
 #include "stb_image.hpp"
@@ -10,7 +12,6 @@
 #include "vertex_array.hpp"
 #include "vertex_buffer.hpp"
 #include "vertex_buffer_layout.hpp"
-#include "quixobj/src/quixobj.hpp"
 
 std::unique_ptr<quixotism_engine> QuixotismEngine;
 std::unique_ptr<static_mesh> SMesh;
@@ -19,50 +20,55 @@ std::unique_ptr<gl_sampler> Sampler;
 
 void quixotism_engine::Init()
 {
-    AddEntity<entity>();
+    CurrentScene = std::make_unique<scene>("Default");
     Renderer = std::make_unique<opengl_renderer>();
     Renderer->SetClearColor(1.0, 0.0, 0.0);
     Shader.AddVertexAndShaderSoruce("../../quixotism_engine/data/shaders/no_transform.vert",
                                     "../../quixotism_engine/data/shaders/uniform_color.frag");
     Shader.CompileShader();
 
-    float Vertices[] = {
-        // positions          // colors           // texture coords
-        0.5F,  0.5F,  0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, // top right
-        0.5F,  -0.5F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, // bottom right
-        -0.5F, -0.5F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, // bottom left
-        -0.5F, 0.5F,  0.0F, 1.0F, 1.0F, 0.0F, 0.0F, 1.0F  // top left
-    };
-    unsigned int Indices[] = {
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
-    };
+    /*
+        float Vertices[] = {
+            // positions          // colors           // texture coords
+            0.5F,  0.5F,  0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, // top right
+            0.5F,  -0.5F, 0.0F, 0.0F, 1.0F, 0.0F, 1.0F, 0.0F, // bottom right
+            -0.5F, -0.5F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, // bottom left
+            -0.5F, 0.5F,  0.0F, 1.0F, 1.0F, 0.0F, 0.0F, 1.0F  // top left
+        };
+        unsigned int Indices[] = {
+            0, 1, 3, // first triangle
+            1, 2, 3  // second triangle
+        };
+    */
+    auto FileReadResult = PlatformServices.ReadFile("../../quixotism_engine/data/meshes/cube.obj");
+    auto Result = qmesh::ParseOBJ(FileReadResult.Content.get(), FileReadResult.Size);
 
-    auto VertPtr = std::make_unique<real32[]>(ArrayCount(Vertices));
-    memcpy(VertPtr.get(), &Vertices, sizeof(Vertices));
+    for (auto &Object : Result->Objects)
+    {
+        if (Object.NotTriangulated)
+        {
+            DEBUG_OUT("Mesh not triangulated, not laoding...");
+            continue;
+        }
+        vertex_buffer_layout BufferLayout;
+        BufferLayout.AddLayoutElementF(layout_element_type::POSITION, 3, false);
+        BufferLayout.AddLayoutElementF(layout_element_type::TEXCOORD, 3, false);
 
-    auto IndPtr = std::make_unique<uint32[]>(6);
-    memcpy(IndPtr.get(), &Indices, sizeof(Indices));
+        size BufferElementCount = 0;
+        auto DataBuffer = SerializeDataByLayout(BufferLayout, &Object, &BufferElementCount);
+        size BufferSize = BufferElementCount * sizeof(real32);
+        auto IndexBuffer = GenerateIndexBuffer(Object.Faces.size());
 
-    auto MeshData = std::make_shared<mesh_data>();
-    MeshData->Position = std::move(VertPtr);
-    MeshData->Indices = std::move(IndPtr);
-    MeshData->IndexCount = static_cast<uint32>(ArrayCount(Indices));
+        auto VBO = std::make_shared<vertex_buffer>();
+        VBO->BufferData(DataBuffer.get(), BufferSize, STATIC_DRAW);
 
-    vertex_buffer_layout BufferLayout;
-    BufferLayout.AddLayoutElementF(3, "Pos", false);
-    BufferLayout.AddLayoutElementF(3, "VertexColor", false);
-    BufferLayout.AddLayoutElementF(2, "TexCoords", false);
+        auto IBO = std::make_shared<index_buffer>();
+        IBO->BufferData(IndexBuffer.get(), Object.Faces.size() * 3 * sizeof(uint32), STATIC_DRAW);
 
-    auto VBO = std::make_shared<vertex_buffer>();
-    VBO->BufferData(MeshData->Position.get(), sizeof(Vertices), STATIC_DRAW);
+        auto VAO = std::make_shared<vertex_array>(BufferLayout);
 
-    auto IBO = std::make_shared<index_buffer>();
-    IBO->BufferData(MeshData->Indices.get(), sizeof(Indices), STATIC_DRAW);
-
-    auto VAO = std::make_shared<vertex_array>(BufferLayout);
-
-    SMesh = std::make_unique<static_mesh>(MeshData, VBO, IBO, VAO);
+        SMesh = std::make_unique<static_mesh>(VBO, IBO, VAO);
+    }
 
     int32 Width = 0;
     int32 Height = 0;
@@ -76,17 +82,14 @@ void quixotism_engine::Init()
     Sampler->SetBindSlot(0);
     Texture1->SetBindSlot(0);
 
-    auto CameraEntityIndex = AddEntity<camera>();
+    auto CameraEntityIndex = CurrentScene->AddEntity<camera>();
     ControlledCameraIndex = CameraEntityIndex;
 
-    auto *CameraEntity = GetEntity(CameraEntityIndex);
-
-    auto FileReadResult = PlatformServices.ReadFile("../../quixotism_engine/data/meshes/cube.obj");
-    auto Result = qobj::ParseOBJ(FileReadResult.Content.get(), FileReadResult.Size);
+    auto *CameraEntity = CurrentScene->GetEntity(CameraEntityIndex);
 
     auto &CameraTransform = CameraEntity->GetComponent<transform>();
     CameraTransform.SetPosition(glm::vec3(0.0F, 0.0F, -1.0F));
-    CameraTransform.SetRotation(glm::vec3(0.0F, -90.0F, 0.0F));
+    CameraTransform.SetRotation(glm::vec3(0.0F, 90.0F, 0.0F));
 }
 
 void quixotism_engine::UpdateAndRender(engine_input &Input, real32 DeltaTime) noexcept
@@ -95,19 +98,27 @@ void quixotism_engine::UpdateAndRender(engine_input &Input, real32 DeltaTime) no
     // auto GreenValue = Sin(static_cast<real32>(t)) / 2.0F + 0.5F;
     // auto Color = glm::vec4(0.0F, GreenValue, 0.0F, 1.0F);
 
-    auto *ControlledEntity = GetEntity(ControlledCameraIndex);
+    auto *ControlledEntity = CurrentScene->GetEntity(ControlledCameraIndex);
     ControlledEntity->ProcessInput(Input, DeltaTime);
-
-    for (auto &Entity : Entities)
+    auto *EntitiesBlock = CurrentScene->GetEntities();
+    while (EntitiesBlock)
     {
-        Entity->Update();
+        for (int32 Idx = 0; Idx < entity_block::BlockSize; ++Idx)
+        {
+            auto *Entity = EntitiesBlock->Data[Idx].get();
+            if (Entity != nullptr)
+            {
+                Entity->Update();
+            }
+        }
+        EntitiesBlock = EntitiesBlock->Next.get();
     }
 
     Renderer->ClearRenderTarget(Window.Width, Window.Height);
     Shader.Bind();
     // Shader.SetUniform4f("Color", Color);
     Shader.SetUniform1i("TextureSampler", 0);
-    auto *Camera = static_cast<camera *>(GetEntity(ControlledCameraIndex));
+    auto *Camera = static_cast<camera *>(CurrentScene->GetEntity(ControlledCameraIndex));
     auto MVP = Camera->GetProjectionMatrix() * Camera->GetViewMatrix();
     Shader.SetUniformMtx4("MVP", MVP);
     Sampler->Bind();

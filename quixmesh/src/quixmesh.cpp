@@ -1,9 +1,9 @@
-#include "quixobj.hpp"
+#include "quixmesh.hpp"
 #include "debug_out.hpp"
 #include <charconv>
 #include <istream>
 
-namespace qobj
+namespace qmesh
 {
 inline void SkipLine(const char *&CurrentPtr)
 {
@@ -28,59 +28,81 @@ inline void ReverseSkipWhitespaces(const char *&CurrentPtr)
     }
 }
 
-object_indicies ParseObjectIndicies(const char *&Current, error &ErrorCode)
+object_face ParseObjectFaces(const char *&Current, error &ErrorCode)
 {
-    object_indicies Indicies{};
+    object_face Face{};
     int32 Index = 0;
     while (*Current != '\n')
     {
         if (Index > 2)
         {
             ErrorCode = error::INDEX_OUT_OF_BOUNDS;
-            return object_indicies{};
+            return object_face{};
         }
 
-        const auto *NumberEnd = Current;
-        while (*NumberEnd != ' ')
+        int32 IdxType = 0;
+        while (*Current != ' ')
         {
-            ++NumberEnd;
-        }
+            const auto *NumberEnd = Current;
+            while (*NumberEnd != '/' && *NumberEnd != ' ')
+            {
+                ++NumberEnd;
+            }
 
-        size NumberLength = NumberEnd - Current;
+            size NumberLength = NumberEnd - Current;
 
-        switch (NumberLength)
-        { // handle up to 10 digits, assume we're 32-bit
-        case 10:
-            Indicies.I[Index] += (Current[NumberLength - 10] - '0') * 1000000000;
-        case 9:
-            Indicies.I[Index] += (Current[NumberLength - 9] - '0') * 100000000;
-        case 8:
-            Indicies.I[Index] += (Current[NumberLength - 8] - '0') * 10000000;
-        case 7:
-            Indicies.I[Index] += (Current[NumberLength - 7] - '0') * 1000000;
-        case 6:
-            Indicies.I[Index] += (Current[NumberLength - 6] - '0') * 100000;
-        case 5:
-            Indicies.I[Index] += (Current[NumberLength - 5] - '0') * 10000;
-        case 4:
-            Indicies.I[Index] += (Current[NumberLength - 4] - '0') * 1000;
-        case 3:
-            Indicies.I[Index] += (Current[NumberLength - 3] - '0') * 100;
-        case 2:
-            Indicies.I[Index] += (Current[NumberLength - 2] - '0') * 10;
-        case 1:
-            Indicies.I[Index] += (Current[NumberLength - 1] - '0');
-            break;
-        default:
-            ErrorCode = error::MALFORMED_INDEX_REGION;
-            return object_indicies{};
+            uint32 VertIndex = 0;
+
+            switch (NumberLength)
+            { // handle up to 10 digits, assume we're 32-bit
+            case 10:
+                VertIndex += (Current[NumberLength - 10] - '0') * 1000000000;
+            case 9:
+                VertIndex += (Current[NumberLength - 9] - '0') * 100000000;
+            case 8:
+                VertIndex += (Current[NumberLength - 8] - '0') * 10000000;
+            case 7:
+                VertIndex += (Current[NumberLength - 7] - '0') * 1000000;
+            case 6:
+                VertIndex += (Current[NumberLength - 6] - '0') * 100000;
+            case 5:
+                VertIndex += (Current[NumberLength - 5] - '0') * 10000;
+            case 4:
+                VertIndex += (Current[NumberLength - 4] - '0') * 1000;
+            case 3:
+                VertIndex += (Current[NumberLength - 3] - '0') * 100;
+            case 2:
+                VertIndex += (Current[NumberLength - 2] - '0') * 10;
+            case 1:
+                VertIndex += (Current[NumberLength - 1] - '0');
+                if (IdxType == 0)
+                {
+                    Face.PosIdx[Index] = VertIndex - 1;
+                }
+                else if (IdxType == 1)
+                {
+                    Face.TexCoordIdx[Index] = VertIndex - 1;
+                }
+                else if (IdxType == 2)
+                {
+                    Face.NormalIdx[Index] = VertIndex - 1;
+                }
+                break;
+            default:
+                break;
+            }
+            ++IdxType;
+            if (*NumberEnd == '/')
+            {
+                ++NumberEnd;
+            }
+            Current = NumberEnd;
         }
+        SkipWhitespaces(Current);
         ++Index;
-        SkipWhitespaces(NumberEnd);
-        Current = NumberEnd;
     }
     ++Current;
-    return Indicies;
+    return Face;
 }
 
 texture_coordinates ParseTextureCoords(const char *Current)
@@ -160,7 +182,7 @@ std::unique_ptr<obj_data> ParseObjects(const char *Start, const char *End, error
         case 'f': {
             NewObject = true;
             SkipWhitespaces(++Current);
-            CurrentObject.Indicies.push_back(ParseObjectIndicies(Current, ErrorCode));
+            CurrentObject.Faces.push_back(ParseObjectFaces(Current, ErrorCode));
             if (ErrorCode != error::NO_ERROR)
             {
                 return nullptr;
@@ -207,11 +229,11 @@ std::unique_ptr<obj_data> ParseOBJ(const void *ObjFileData, size FileSize)
     error ParsingError = error::NO_ERROR;
     auto ObjData = ParseObjects(StartPtr, EndPtr, ParsingError);
 
-    if (ObjData)
+    if (!ObjData)
     {
         DEBUG_OUT("Failed to parse OBJ file...");
     }
 
     return ObjData;
 }
-} // namespace qobj
+} // namespace qmesh

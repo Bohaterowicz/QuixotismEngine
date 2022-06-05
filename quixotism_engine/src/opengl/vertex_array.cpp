@@ -59,7 +59,7 @@ void vertex_array::Release()
 
 void vertex_array::BindVertexBuffer(uint32 ID, uint32 Slot)
 {
-    GLCall(glVertexArrayVertexBuffer(GetGLID(), Slot, ID, 0, 8 * sizeof(float)));
+    GLCall(glVertexArrayVertexBuffer(GetGLID(), Slot, ID, 0, 6 * sizeof(float)));
 }
 
 void vertex_array::BindIndexBuffer(uint32 ID)

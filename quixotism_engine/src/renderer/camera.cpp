@@ -3,6 +3,8 @@
 #include "quixotism_math.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 #include "debug_out.hpp"
 
@@ -92,7 +94,8 @@ glm::mat4 camera::CalculateProjectionMatrix() const
 glm::mat4 camera::CalculatePerspectiveProjectionMatrix() const
 {
     glm::mat4 Projection = glm::mat4(0.0F);
-    Projection[0][0] = 1 / (PerspectiveProjectionInfo.AspectRatio * Tan(glm::radians(PerspectiveProjectionInfo.FOV / 2)));
+    Projection[0][0] =
+        1 / (PerspectiveProjectionInfo.AspectRatio * Tan(glm::radians(PerspectiveProjectionInfo.FOV / 2)));
     Projection[1][1] = 1 / Tan(glm::radians(PerspectiveProjectionInfo.FOV / 2));
     Projection[2][2] = -(PerspectiveProjectionInfo.FarPlane + PerspectiveProjectionInfo.NearPlane) /
                        (PerspectiveProjectionInfo.FarPlane - PerspectiveProjectionInfo.NearPlane);
@@ -130,6 +133,7 @@ glm::mat4 camera::GetViewMatrix()
     auto ForwardVector = CameraTransform.GetForward();
     auto RightVector = CameraTransform.GetRight();
     auto LocalUpVector = CameraTransform.GetLocalUp();
+
     auto RotationTransform = glm::mat4(1.0F);
     RotationTransform[0] = glm::vec4(RightVector, 0.0F);
     RotationTransform[1] = glm::vec4(LocalUpVector, 0.0F);
@@ -143,7 +147,7 @@ void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
 {
     auto Controller = Input.GetKeybaordController();
     auto &Transform = GetComponent<transform>();
-    auto Speed = 1.0F; // m/s
+    auto Speed = 10.0F; // m/s
     auto RotationSpeed = 10.0F;
     auto Movement = glm::vec3{0.0F};
     if (Controller.Up.EndedDown)
@@ -173,20 +177,13 @@ void camera::ProcessInput(engine_input &Input, real32 DeltaTime)
     if (glm::length(Movement) > 0.0F)
     {
         Movement = glm::normalize(Movement);
+        Transform.Move(Movement * Speed * DeltaTime);
     }
-    Transform.Move(Movement * Speed * DeltaTime);
 
     auto const [Dx, Dy] = Input.GetMouseDelta();
-    auto RotationDelta = glm::vec3{-Dy, Dx, 0.0F} * RotationSpeed * DeltaTime;
-
-    auto m = std::to_string(Transform.GetRotation().x) + " - " + std::to_string(Transform.GetRotation().y) + " - " +
-             std::to_string(Transform.GetRotation().z);
-    DEBUG_OUT(m.c_str());
-
-    Transform.Rotate(RotationDelta);
-
-    auto f = Transform.GetForward();
-
-    m = std::to_string(f.x) + " = " + std::to_string(f.y) + " = " + std::to_string(f.z);
-    DEBUG_OUT(m.c_str());
+    auto RotationDelta = glm::vec3{Dy, Dx, 0.0F} * RotationSpeed * DeltaTime;
+    if (glm::length(RotationDelta) > 0.0F)
+    {
+        Transform.Rotate(RotationDelta);
+    }
 }

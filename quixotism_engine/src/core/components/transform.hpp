@@ -49,11 +49,12 @@ class transform : public component
         Position += Delta;
     }
 
-    void Rotate(glm::vec3 EulerAngles);
+    void Rotate(glm::vec3 &EulerAngles);
+    // void Rotate(glm::quat &Rotation);
 
-    _NODISCARD glm::vec3 GetForward();
-    _NODISCARD glm::vec3 GetRight();
-    _NODISCARD glm::vec3 GetLocalUp();
+    _NODISCARD glm::vec3 GetForward() const;
+    _NODISCARD glm::vec3 GetRight() const;
+    _NODISCARD glm::vec3 GetLocalUp() const;
 
     _NODISCARD glm::mat4 GetTransformationMatrix();
 

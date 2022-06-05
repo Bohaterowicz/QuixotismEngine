@@ -11,7 +11,7 @@ class static_mesh
 {
   public:
     static_mesh();
-    explicit static_mesh(std::shared_ptr<mesh_data> &MeshData, std::shared_ptr<vertex_buffer> &VBO,
+    explicit static_mesh(std::shared_ptr<vertex_buffer> &VBO,
                          std::shared_ptr<index_buffer> &IBO, std::shared_ptr<vertex_array> &VAO);
 
     _NODISCARD const vertex_array &GetVertexArray() const
@@ -35,5 +35,4 @@ class static_mesh
     std::shared_ptr<vertex_buffer> VertexBuffer = nullptr;
     std::shared_ptr<index_buffer> IndexBuffer = nullptr;
     std::shared_ptr<vertex_array> VertexArray = nullptr;
-    std::shared_ptr<mesh_data> Mesh = nullptr;
 };
