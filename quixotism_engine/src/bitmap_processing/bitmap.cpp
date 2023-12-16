@@ -1,6 +1,8 @@
 #include "bitmap_processing/bitmap.hpp"
 
 #include "dbg_print.hpp"
+#include <algorithm>
+#include <numeric>
 
 namespace quixotism {
 
@@ -40,73 +42,89 @@ Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
 }
 
 std::expected<PackedBitmap, BitmapError> PackBitmaps(
-    const std::vector<Bitmap> &bitmaps) {
-  constexpr i32 max_bitmap_dimension = 4092;
-  Bitmap font_bitmap;
-  // first figure out the biggest edge size of all glyphs
-  i32 max_sub_bitmap_size = 0;
-  for (const auto &bitmap : bitmaps) {
-    const auto [width, height] = bitmap.GetDim();
-    max_sub_bitmap_size = std::max(max_sub_bitmap_size, width);
-    max_sub_bitmap_size = std::max(max_sub_bitmap_size, height);
-  }
-  // compute number of elements per dimension of the square
-  i32 elements_per_dim =
-      static_cast<i32>(std::ceilf(std::sqrtf(bitmaps.size())));
+    const std::vector<Bitmap> &bitmaps, const i32 padding, const i32 max_bitmap_dim) {
+  if (bitmaps.empty())
+    return std::unexpected(BitmapError{});
 
-  // get the pixel size of the bitmap square using max_sub_bitmap_size
-  i32 bitmap_dimension = elements_per_dim * max_sub_bitmap_size;
+  std::vector<size_t> bitmap_indicies(bitmaps.size());
+  std::iota(bitmap_indicies.begin(), bitmap_indicies.end(), 0);
+  std::sort(bitmap_indicies.begin(), bitmap_indicies.end(), [&](const size_t a, const size_t b){
+    return bitmaps[a].GetHeight() > bitmaps[b].GetHeight();
+  });
 
-  // get nearest power of 2 aligned bitmap size
-  i32 aligned_bitmap_dimension = 64;
-  while (aligned_bitmap_dimension < bitmap_dimension) {
-    aligned_bitmap_dimension <<= 1;
+  //first compute what bitmap size we need to pack all bitmaps
+  i32 current_bitmap_dimension = 256;
+  while (current_bitmap_dimension <= max_bitmap_dim) {
+    bool finished = true;
+    i32 current_height = bitmaps[bitmap_indicies[0]].GetHeight() + (2 * padding), current_width = 0;  
+    if (current_height > current_bitmap_dimension) {
+      current_bitmap_dimension <<= 1;
+      continue;
+    }
+    i32 prev_row_height = current_height;
+    for (auto idx : bitmap_indicies) {
+      const auto [width, height] = bitmaps[idx].GetDim();
+      current_width += width + (2 * padding);
+      if (current_width > current_bitmap_dimension) {
+        current_height += prev_row_height;
+        current_width = width + (2 * padding);
+        prev_row_height = height + (2 * padding);
+        if ((current_height > current_bitmap_dimension) || (current_width > current_bitmap_dimension)) {
+            finished = false;
+            break;
+        }
+      }
+    }
+    if (finished)
+      break;
+    current_bitmap_dimension <<= 1;
   }
 
   // if that size is bigger than the allowed maximum dimension pixel size,
   // return null
-  if (aligned_bitmap_dimension > max_bitmap_dimension) {
+  if (current_bitmap_dimension > max_bitmap_dim) {
     DBG_PRINT(
         "could not create font bitmap: baked texture would be too big (max "
         "font bitmap is 4k)");
     return std::unexpected(BitmapError{});
   }
 
-  PackedBitmap packed;
-  packed.bitmap = Bitmap{aligned_bitmap_dimension, aligned_bitmap_dimension,
+  PackedBitmap packed_font;
+  packed_font.bitmap = Bitmap{current_bitmap_dimension, current_bitmap_dimension,
                          Bitmap::BitmapFormat::R8};
-  packed.coords.reserve(bitmaps.size());
+  packed_font.coords.resize(bitmaps.size());
 
-  for (size_t idx = 0; idx < bitmaps.size(); ++idx) {
-    const auto &sub_bitmap = bitmaps[idx];
-    const auto [width, height] = sub_bitmap.GetDim();
+  i32 current_height = padding, current_width = 0;
+  i32 prev_row_height = bitmaps[bitmap_indicies[0]].GetHeight();
+  for (const auto idx : bitmap_indicies) {
+    const auto &bitmap = bitmaps[idx];
+    const auto [width, height] = bitmap.GetDim();
+    if ((current_width + width + (2 * padding)) > current_bitmap_dimension) {
+      current_width = 0;
+      current_height += (prev_row_height + (2 * padding));
+      prev_row_height = height;
+      assert(current_width <= current_bitmap_dimension);
+      assert(current_height <= current_bitmap_dimension);
+    }
+    current_width += padding;
     BitmapCoord coord;
-    i32 row = idx / elements_per_dim;
-    i32 col = idx % elements_per_dim;
-
-    coord.lower_left.x = (row * max_sub_bitmap_size) / aligned_bitmap_dimension;
-    coord.lower_left.y = (col * max_sub_bitmap_size) / aligned_bitmap_dimension;
-    coord.top_right.x =
-        (coord.lower_left.x + max_sub_bitmap_size) / aligned_bitmap_dimension;
-    coord.top_right.y =
-        (coord.lower_left.y + max_sub_bitmap_size) / aligned_bitmap_dimension;
-
-    auto *source = sub_bitmap.GetBitmapPtr();
+    coord.lower_left = Vec2{static_cast<r32>(current_width), static_cast<r32>(current_height)} / static_cast<r32>(current_bitmap_dimension);
+    coord.top_right = Vec2{static_cast<r32>(current_width + width), static_cast<r32>(current_height + height)} / static_cast<r32>(current_bitmap_dimension);
+    packed_font.coords[idx] = coord;
+    const auto *source = bitmap.GetBitmapPtr();
     auto *dest_row =
-        packed.bitmap.GetBitmapWritePtr() +
-        ((aligned_bitmap_dimension - ((row * max_sub_bitmap_size) + 1)) *
-         aligned_bitmap_dimension) +
-        (col * max_sub_bitmap_size);
+        packed_font.bitmap.GetBitmapWritePtr() + (current_height * current_bitmap_dimension) + (current_width);
     for (i32 y = 0; y < height; ++y) {
       auto *dest = dest_row;
       for (i32 x = 0; x < width; ++x) {
         *dest++ = *source++;
       }
-      dest_row -= aligned_bitmap_dimension;
+      dest_row += current_bitmap_dimension;
     }
+    current_width += (width + padding);
   }
 
-  return packed;
+  return packed_font;
 }
 
 }  // namespace quixotism
