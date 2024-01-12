@@ -27,6 +27,8 @@ class QuixotismEngine {
   void UpdateWindowSize(i32 width, i32 height) { window_dim = {width, height}; }
   WindowDim GetWindowDim() const { return window_dim; }
 
+  void DrawText(std::string &&text, float x, float y);
+
   Font font;
 
  private:

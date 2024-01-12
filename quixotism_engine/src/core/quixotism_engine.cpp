@@ -16,7 +16,7 @@ void QuixotismEngine::UpdateAndRender() {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
   renderer.ClearRenderTarget();
-
+  DrawText("Hello Text!", 50.f, 100.f);
   renderer.Test();
 }
 
@@ -30,6 +30,10 @@ void QuixotismEngine::InitTextFonts() {
       DBG_PRINT("fialed to load font...");
     }
   }
+}
+
+void DrawText(std::string &&text, r32 x, r32 y) {
+  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y});
 }
 
 }  // namespace quixotism

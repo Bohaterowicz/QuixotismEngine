@@ -124,4 +124,64 @@ void QuixotismRenderer::Test() {
   glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
+void QuixotismRenderer::PushText(std::string &&text, Vec2 coord) {
+  TextDrawInfo info;
+  info.text = std::move(text);
+  info.coord = coord;
+  draw_text_queue.push_back(std::move(info));
+}
+
+struct GlyphVert {
+  r32 pos[2];
+  r32 coord[2];
+};
+
+void QuixotismRenderer::DrawText() {
+  // first compute the buffer size needed to store vertex data or all characters for all text to render
+  size_t char_count = 0;
+  for (const auto &text_info : draw_text_queue) {
+    char_count += text_info.text.size();
+  }
+
+  // for now we hard code that we use 6 verts per character (quad = 2 triangles) with 4 floats per vertex (x, y, u, v)
+  size_t required_buffer_size = char_count * 6 * 4 * sizeof(r32);
+  if (required_buffer_size == 0) {
+    return;
+  }
+
+  if (cached_text_vert_buffer_size < required_buffer_size) {
+    size_t buffer_size = 512;
+    while (buffer_size < required_buffer_size) {
+      buffer_size <<= 1;
+    }
+    cached_text_vert_buffer = std::make_unique<u8[]>(buffer_size);
+    cached_text_vert_buffer_size = buffer_size;
+  }
+
+  assert(cached_text_vert_buffer && cached_text_vert_buffer_size >= required_buffer_size);
+
+  // now we fill the vertex data buffer
+  auto &font = QuixotismEngine::GetEngine().font;
+  auto *vert = reinterpret_cast<GlyphVert *>(cached_text_vert_buffer.get());
+  for (const auto &text_info : draw_text_queue) {
+    r32 x_offset = 0;
+    for (const auto &c: text_info.text) {
+      auto &glyph_info = font.GetGlyphInfo(c);
+      vert->pos[0] = text_info.coord.x + x_offset;
+      vert->pos[1] = text_info.coord.y;
+      x_offset += 
+    }
+  }
+
+  // potentially create buffer on gpu (if we did nto have one already)
+
+  // send vert data to gpu
+  
+  // bind vert buffer
+
+  // setup shader
+
+  // draw call
+}
+
 }  // namespace quixotism
