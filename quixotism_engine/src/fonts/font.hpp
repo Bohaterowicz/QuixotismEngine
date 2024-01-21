@@ -2,8 +2,8 @@
 
 #include <expected>
 #include <memory>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "bitmap_processing/bitmap.hpp"
 #include "quixotism_c.hpp"
@@ -25,17 +25,22 @@ struct GlyphInfo {
   BitmapCoord coord;
 };
 
+using GlyphInfoMap = std::unordered_map<char, GlyphInfo>;
+
 class Font {
  public:
+  CLASS_DELETE_COPY(Font);
+  CLASS_DEFAULT_MOVE(Font);
   Font() = default;
+  Font(Bitmap &&font_bitmap, GlyphInfoMap glyph_info)
+      : bitmap{std::move(font_bitmap)}, glyph_info{glyph_info} {};
 
   const Bitmap &GetBitmap() const { return bitmap; }
-  const GlyphInfo &GetGlyphInfo(const char c) const {
-    return glyph_info.at(c);
-  }
+  const GlyphInfo &GetGlyphInfo(const char c) const { return glyph_info.at(c); }
+
  private:
   Bitmap bitmap;
-  std::unordered_map<char, GlyphInfo> glyph_info;
+  GlyphInfoMap glyph_info;
 };
 
 std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,

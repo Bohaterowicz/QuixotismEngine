@@ -52,18 +52,22 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
     if (glyph.has_value()) {
       glyphs.push_back(std::move(*glyph));
     } else {
-      DBG_PRINT("aa");
       return std::unexpected(ParseFontError{});
     }
   }
-  std::vector<GlyphCoord> glyph_coords{codepoint_count};
-  Font font;
-  auto packed_font_bitmap = PackBitmaps(glyphs);
-  if (!packed_font_bitmap.has_value()) {
+
+  auto packed_bitmap = PackBitmaps(glyphs);
+  if (!packed_bitmap) {
     return std::unexpected(ParseFontError{});
   }
-  font.InitPackedFont(std::move(*packed_font_bitmap), codepoint_start);
-  return font;
+  GlyphInfoMap glyph_info;
+  auto &coords = (*packed_bitmap).coords;
+  for (char codepoint_idx = 0; codepoint_idx < codepoint_count;
+       ++codepoint_idx) {
+    char codepoint = codepoint_start + codepoint_idx;
+    glyph_info[codepoint] = {0, 0, 0, coords[codepoint_idx]};
+  }
+  return Font{std::move((*packed_bitmap).bitmap), glyph_info};
 }
 
 }  // namespace quixotism

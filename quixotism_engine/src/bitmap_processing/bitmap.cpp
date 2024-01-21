@@ -1,8 +1,9 @@
 #include "bitmap_processing/bitmap.hpp"
 
-#include "dbg_print.hpp"
 #include <algorithm>
 #include <numeric>
+
+#include "dbg_print.hpp"
 
 namespace quixotism {
 
@@ -41,22 +42,25 @@ Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
   data = std::make_unique<u8[]>(width * height * BytesPerPixel());
 }
 
-std::expected<PackedBitmap, BitmapError> PackBitmaps(
-    const std::vector<Bitmap> &bitmaps, const i32 padding, const i32 max_bitmap_dim) {
-  if (bitmaps.empty())
-    return std::unexpected(BitmapError{});
+[[no_discard]] std::expected<PackedBitmap, BitmapError> PackBitmaps(
+    const std::vector<Bitmap> &bitmaps, const i32 padding,
+    const i32 max_bitmap_dim) {
+  if (bitmaps.empty()) return std::unexpected(BitmapError{});
 
   std::vector<size_t> bitmap_indicies(bitmaps.size());
   std::iota(bitmap_indicies.begin(), bitmap_indicies.end(), 0);
-  std::sort(bitmap_indicies.begin(), bitmap_indicies.end(), [&](const size_t a, const size_t b){
-    return bitmaps[a].GetHeight() > bitmaps[b].GetHeight();
-  });
+  std::sort(bitmap_indicies.begin(), bitmap_indicies.end(),
+            [&](const size_t a, const size_t b) {
+              return bitmaps[a].GetHeight() > bitmaps[b].GetHeight();
+            });
 
-  //first compute what bitmap size we need to pack all bitmaps
+  // first compute what bitmap size we need to pack all bitmaps
   i32 current_bitmap_dimension = 256;
   while (current_bitmap_dimension <= max_bitmap_dim) {
     bool finished = true;
-    i32 current_height = bitmaps[bitmap_indicies[0]].GetHeight() + (2 * padding), current_width = 0;  
+    i32 current_height =
+            bitmaps[bitmap_indicies[0]].GetHeight() + (2 * padding),
+        current_width = 0;
     if (current_height > current_bitmap_dimension) {
       current_bitmap_dimension <<= 1;
       continue;
@@ -69,14 +73,14 @@ std::expected<PackedBitmap, BitmapError> PackBitmaps(
         current_height += prev_row_height;
         current_width = width + (2 * padding);
         prev_row_height = height + (2 * padding);
-        if ((current_height > current_bitmap_dimension) || (current_width > current_bitmap_dimension)) {
-            finished = false;
-            break;
+        if ((current_height > current_bitmap_dimension) ||
+            (current_width > current_bitmap_dimension)) {
+          finished = false;
+          break;
         }
       }
     }
-    if (finished)
-      break;
+    if (finished) break;
     current_bitmap_dimension <<= 1;
   }
 
@@ -90,8 +94,9 @@ std::expected<PackedBitmap, BitmapError> PackBitmaps(
   }
 
   PackedBitmap packed_font;
-  packed_font.bitmap = Bitmap{current_bitmap_dimension, current_bitmap_dimension,
-                         Bitmap::BitmapFormat::R8};
+  packed_font.bitmap =
+      Bitmap{current_bitmap_dimension, current_bitmap_dimension,
+             Bitmap::BitmapFormat::R8};
   packed_font.coords.resize(bitmaps.size());
 
   i32 current_height = padding, current_width = 0;
@@ -108,12 +113,17 @@ std::expected<PackedBitmap, BitmapError> PackBitmaps(
     }
     current_width += padding;
     BitmapCoord coord;
-    coord.lower_left = Vec2{static_cast<r32>(current_width), static_cast<r32>(current_height)} / static_cast<r32>(current_bitmap_dimension);
-    coord.top_right = Vec2{static_cast<r32>(current_width + width), static_cast<r32>(current_height + height)} / static_cast<r32>(current_bitmap_dimension);
+    coord.lower_left = Vec2{static_cast<r32>(current_width),
+                            static_cast<r32>(current_height)} /
+                       static_cast<r32>(current_bitmap_dimension);
+    coord.top_right = Vec2{static_cast<r32>(current_width + width),
+                           static_cast<r32>(current_height + height)} /
+                      static_cast<r32>(current_bitmap_dimension);
     packed_font.coords[idx] = coord;
     const auto *source = bitmap.GetBitmapPtr();
-    auto *dest_row =
-        packed_font.bitmap.GetBitmapWritePtr() + (current_height * current_bitmap_dimension) + (current_width);
+    auto *dest_row = packed_font.bitmap.GetBitmapWritePtr() +
+                     (current_height * current_bitmap_dimension) +
+                     (current_width);
     for (i32 y = 0; y < height; ++y) {
       auto *dest = dest_row;
       for (i32 x = 0; x < width; ++x) {

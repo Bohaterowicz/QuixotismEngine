@@ -3,7 +3,6 @@
 #include "dbg_print.hpp"
 #include "renderer/quixotism_renderer.hpp"
 
-
 namespace quixotism {
 
 void QuixotismEngine::Init(PlatformServices& s) {
@@ -16,7 +15,7 @@ void QuixotismEngine::UpdateAndRender() {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
   renderer.ClearRenderTarget();
-  DrawText("Hello Text!", 50.f, 100.f);
+  DrawText("Hello Text!", -0.7, 0.8f);
   renderer.Test();
 }
 
@@ -32,7 +31,7 @@ void QuixotismEngine::InitTextFonts() {
   }
 }
 
-void DrawText(std::string &&text, r32 x, r32 y) {
+void QuixotismEngine::DrawText(std::string&& text, r32 x, r32 y) {
   QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y});
 }
 

@@ -31,7 +31,7 @@ message("COMPILE OPTION ADDED: -wd4201 -wd4100 ----> Those warnings will be disa
 
 add_subdirectory(quixotism_engine)
 
-include_directories(./quixotism_engine/src ./third_party ./third_party/GLEW/include ./quixotism_engine/src/common)
+include_directories(./quixotism_engine/src ./third_party ./third_party/GLEW/include ./quixotism_engine/src/util)
 
 set(WIN32_SOURCES 
 quixotism_engine/src/win32/win32_quixotism_engine.cpp 

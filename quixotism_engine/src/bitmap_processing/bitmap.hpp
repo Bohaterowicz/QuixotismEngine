@@ -42,7 +42,7 @@ class Bitmap {
 
   std::pair<i32, i32> GetDim() const { return {width, height}; }
   i32 GetWidth() const { return width; }
-  i32 GetHeight() const {return height; }
+  i32 GetHeight() const { return height; }
 
  private:
   i32 width;
@@ -62,6 +62,7 @@ struct PackedBitmap {
 };
 
 std::expected<PackedBitmap, BitmapError> PackBitmaps(
-    const std::vector<Bitmap> &bitmaps, const i32 padding = 2, const i32 max_bitmap_dim = 4096);
+    const std::vector<Bitmap> &bitmaps, const i32 padding = 2,
+    const i32 max_bitmap_dim = 4096);
 
 }  // namespace quixotism

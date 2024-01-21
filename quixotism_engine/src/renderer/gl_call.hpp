@@ -12,7 +12,7 @@
   x;              \
   assert(GLLogCall(#x, __FILE__, __LINE__));
 #else
-#define GLCall(msg)
+#define GLCall(x) x;
 #endif
 
 inline void GLClearError() {

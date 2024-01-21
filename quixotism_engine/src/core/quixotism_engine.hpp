@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "core/platform_services.hpp"
 #include "fonts/font.hpp"
 
@@ -12,6 +14,7 @@ struct WindowDim {
 
 class QuixotismEngine {
  public:
+  CLASS_DELETE_COPY(QuixotismEngine);
   static QuixotismEngine& GetEngine() {
     static QuixotismEngine engine{};
     return engine;
@@ -19,15 +22,12 @@ class QuixotismEngine {
 
   void Init(PlatformServices& s);
 
-  QuixotismEngine(const QuixotismEngine&) = delete;
-  QuixotismEngine& operator=(const QuixotismEngine&) = delete;
-
   void UpdateAndRender();
 
   void UpdateWindowSize(i32 width, i32 height) { window_dim = {width, height}; }
   WindowDim GetWindowDim() const { return window_dim; }
 
-  void DrawText(std::string &&text, float x, float y);
+  void DrawText(std::string&& text, float x, float y);
 
   Font font;
 

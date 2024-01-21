@@ -66,3 +66,32 @@ inline u32 SafeU64ToU32(u64 Value) {
   auto Value32 = static_cast<u32>(Value);
   return Value32;
 }
+
+#define CLASS_DELETE_COPY_CTOR(class) class(const class &) = delete;
+#define CLASS_DELETE_MOVE_CTOR(class) class(class &&) = delete;
+
+#define CLASS_DELETE_COPY_ASSIGNMENT(class) \
+  class &operator=(const class &) = delete;
+#define CLASS_DELETE_MOVE_ASSIGNMENT(class) class &operator=(class &&) = delete;
+
+#define CLASS_DELETE_COPY(class) \
+  CLASS_DELETE_COPY_CTOR(class) CLASS_DELETE_COPY_ASSIGNMENT(class);
+
+#define CLASS_DELETE_MOVE(class) \
+  CLASS_DELETE_MOVE_CTOR(class) CLASS_DELETE_MOVE_ASSIGNMENT(class)
+
+#define CLASS_DEFAULT_COPY_CTOR(class) class(const class &) = default;
+#define CLASS_DEFAULT_MOVE_CTOR(class) class(class &&) = default;
+
+#define CLASS_DEFAULT_COPY_ASSIGNMENT(class) \
+  class &operator=(const class &) = default;
+#define CLASS_DEFAULT_MOVE_ASSIGNMENT(class) \
+  class &operator=(class &&) = default;
+
+#define CLASS_DEFAULT_COPY(class) \
+  CLASS_DEFAULT_COPY_CTOR(class) CLASS_DEFAULT_COPY_ASSIGNMENT(class)
+#define CLASS_DEFAULT_MOVE(class) \
+  CLASS_DEFAULT_MOVE_CTOR(class) CLASS_DEFAULT_MOVE_ASSIGNMENT(class)
+
+#define CLASS_DEFAULT_MOVE_AND_COPY(class) \
+  CLASS_DEFAULT_MOVE(class) CLASS_DEFAULT_COPY(class)
