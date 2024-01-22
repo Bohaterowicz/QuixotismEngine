@@ -19,28 +19,44 @@ struct GlyphCoord {
 };
 
 struct GlyphInfo {
-  i32 bitmap_pixel_width;
-  i32 bitmap_pixel_height;
-  r32 ratio;
+  i32 pixel_width;
+  i32 pixel_height;
+  i32 pixel_baseline_offset;
   BitmapCoord coord;
 };
 
-using GlyphInfoMap = std::unordered_map<char, GlyphInfo>;
+using GlyphInfoMap = std::unordered_map<u32, GlyphInfo>;
 
 class Font {
  public:
   CLASS_DELETE_COPY(Font);
   CLASS_DEFAULT_MOVE(Font);
   Font() = default;
-  Font(Bitmap &&font_bitmap, GlyphInfoMap glyph_info)
-      : bitmap{std::move(font_bitmap)}, glyph_info{glyph_info} {};
+  Font(Bitmap &&font_bitmap, GlyphInfoMap &&glyph_info, r32 scale, i32 ascent,
+       i32 descent, i32 line_gap)
+      : bitmap{std::move(font_bitmap)},
+        glyph_info{std::move(glyph_info)},
+        scale{scale},
+        ascent{ascent},
+        descent{descent},
+        line_gap{line_gap} {};
 
   const Bitmap &GetBitmap() const { return bitmap; }
-  const GlyphInfo &GetGlyphInfo(const char c) const { return glyph_info.at(c); }
+  const GlyphInfo &GetGlyphInfo(u32 code_point) const {
+    return glyph_info.at(code_point);
+  }
+  r32 GetScale() const { return scale; }
+  i32 GetAscent() const { return ascent; }
+  i32 GetDescent() const { return descent; }
+  i32 GetLineGap() const { return line_gap; }
+
+  r32 GetHorizontalAdvance(u32 code_point, u32 prev_code_point) const;
 
  private:
   Bitmap bitmap;
   GlyphInfoMap glyph_info;
+  r32 scale;
+  i32 ascent, descent, line_gap;
 };
 
 std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,

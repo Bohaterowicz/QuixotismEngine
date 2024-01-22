@@ -12,6 +12,7 @@ namespace quixotism {
 struct TextDrawInfo {
   std::string text;
   Vec2 position;
+  r32 scale;
 };
 
 class QuixotismRenderer {
@@ -27,7 +28,7 @@ class QuixotismRenderer {
 
   void Test();
 
-  void PushText(std::string&& text, Vec2 position);
+  void PushText(std::string&& text, Vec2 position, r32 scale);
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;

@@ -10,7 +10,7 @@
 
 namespace quixotism {
 
-static std::expected<Bitmap, ParseFontError> GetGlyphFromFont(
+static std::expected<std::pair<Bitmap, i32>, ParseFontError> GetGlyphFromFont(
     stbtt_fontinfo *font, char codepoint, float scale) {
   i32 width, height, x_offset, y_offset;
   auto stbtt_bitmap = stbtt_GetCodepointBitmap(
@@ -32,7 +32,7 @@ static std::expected<Bitmap, ParseFontError> GetGlyphFromFont(
   }
   stbtt_FreeBitmap(stbtt_bitmap, nullptr);
 
-  return glyph;
+  return std::make_pair(std::move(glyph), y_offset);
 }
 
 std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
@@ -42,32 +42,59 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
   constexpr char codepoint_start = '!';
   constexpr char codepoint_end = '~';
   constexpr char codepoint_count = codepoint_end - codepoint_start + 1;
-  auto font_pixel_scale = stbtt_ScaleForPixelHeight(&font_info, 180.0);
+  auto font_scale = stbtt_ScaleForPixelHeight(&font_info, 180.0);
   std::vector<Bitmap> glyphs;
+  GlyphInfoMap glyph_info_map;
+  GlyphInfo glyph_info;
   glyphs.reserve(codepoint_count);
   for (char codepoint_idx = 0; codepoint_idx < codepoint_count;
        ++codepoint_idx) {
     char codepoint = codepoint_start + codepoint_idx;
-    auto glyph = GetGlyphFromFont(&font_info, codepoint, font_pixel_scale);
-    if (glyph.has_value()) {
-      glyphs.push_back(std::move(*glyph));
+    auto font_glyph = GetGlyphFromFont(&font_info, codepoint, font_scale);
+    if (font_glyph.has_value()) {
+      glyphs.push_back(std::move((*font_glyph).first));
+      glyph_info_map[codepoint] = {glyphs.back().GetWidth(),
+                                   glyphs.back().GetHeight(),
+                                   (*font_glyph).second,
+                                   {}};
     } else {
       return std::unexpected(ParseFontError{});
     }
   }
 
+  i32 ascent, descent, line_gap;
+  stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
+  ascent *= font_scale;
+  descent *= font_scale;
+  line_gap *= font_scale;
+
   auto packed_bitmap = PackBitmaps(glyphs);
   if (!packed_bitmap) {
     return std::unexpected(ParseFontError{});
   }
-  GlyphInfoMap glyph_info;
+
+  // fill the coords in the glyph map
   auto &coords = (*packed_bitmap).coords;
   for (char codepoint_idx = 0; codepoint_idx < codepoint_count;
        ++codepoint_idx) {
     char codepoint = codepoint_start + codepoint_idx;
-    glyph_info[codepoint] = {0, 0, 0, coords[codepoint_idx]};
+    glyph_info_map[codepoint].coord = coords[codepoint_idx];
   }
-  return Font{std::move((*packed_bitmap).bitmap), glyph_info};
+
+  return Font{std::move((*packed_bitmap).bitmap),
+              std::move(glyph_info_map),
+              font_scale,
+              ascent,
+              descent,
+              line_gap};
+}
+
+r32 Font::GetHorizontalAdvance(u32 code_point, u32 prev_code_point) const {
+  if (!prev_code_point) {
+    return 0;
+  }
+
+  return glyph_info.at(prev_code_point).pixel_width + 10;
 }
 
 }  // namespace quixotism

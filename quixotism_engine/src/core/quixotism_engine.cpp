@@ -15,7 +15,8 @@ void QuixotismEngine::UpdateAndRender() {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
   renderer.ClearRenderTarget();
-  DrawText("Hello Text!", -0.7, 0.8f);
+  DrawText("Hyello Text! Much to do porter, ying yang. jhon", -0.98, 0.8f,
+           0.5f);
   renderer.Test();
 }
 
@@ -31,8 +32,8 @@ void QuixotismEngine::InitTextFonts() {
   }
 }
 
-void QuixotismEngine::DrawText(std::string&& text, r32 x, r32 y) {
-  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y});
+void QuixotismEngine::DrawText(std::string&& text, r32 x, r32 y, r32 scale) {
+  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, scale);
 }
 
 }  // namespace quixotism
