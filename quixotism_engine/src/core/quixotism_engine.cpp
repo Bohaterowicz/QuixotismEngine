@@ -15,13 +15,14 @@ void QuixotismEngine::UpdateAndRender() {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
   renderer.ClearRenderTarget();
-  DrawText("Hyello Text! Much to do porter, ying yang. jhon", -0.98, 0.8f,
-           0.5f);
+  DrawText("Te, Tog, Hyello Text! Much to do porter, ying yang. jhon", -0.98,
+           0.8f, 0.9);
   renderer.Test();
 }
 
 void QuixotismEngine::InitTextFonts() {
-  auto ttf_file = services.read_file("C:/Windows/Fonts/arial.ttf");
+  auto ttf_file = services.read_file(
+      "D:/QuixotismEngine/quixotism_engine/data/fonts/inter_tight.ttf");
   if (ttf_file.data) {
     if (auto _font = TTFMakeASCIIFont(ttf_file.data.get(), ttf_file.size);
         _font.has_value()) {
