@@ -48,7 +48,7 @@ class Font {
   CLASS_DEFAULT_MOVE(Font);
   Font() = default;
   Font(PackedBitmap &&font_bitmap, GlyphInfoTable &&glyph_info, r32 scale,
-       i32 ascent, i32 descent, i32 line_gap,
+       i32 ascent, i32 descent, i32 line_gap, i32 space_advance,
        std::unique_ptr<r32[]> &&kerning = nullptr, size_t kerning_size = 0)
       : packed_bitmap{std::move(font_bitmap)},
         glyph_info{std::move(glyph_info)},
@@ -56,6 +56,7 @@ class Font {
         ascent{ascent},
         descent{descent},
         line_gap{line_gap},
+        space_advance{space_advance},
         kerning_advancment{std::move(kerning)},
         kerning_size{kerning_size} {
     assert((CODEPOINT_COUNT * CODEPOINT_COUNT) == kerning_size);
@@ -75,6 +76,7 @@ class Font {
   i32 GetAscent() const { return ascent; }
   i32 GetDescent() const { return descent; }
   i32 GetLineGap() const { return line_gap; }
+  i32 GetSpaceAdvance() const { return space_advance; }
 
   r32 GetHorizontalAdvance(u32 code_point, u32 prev_code_point) const;
 
@@ -85,7 +87,7 @@ class Font {
   // codepoint 2d array of kerning information
   std::unique_ptr<r32[]> kerning_advancment;
   r32 scale;
-  i32 ascent, descent, line_gap;
+  i32 ascent, descent, line_gap, space_advance;
 };
 
 std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,

@@ -5,6 +5,8 @@
 
 #include "gl_buffer_manager.hpp"
 #include "math/math.hpp"
+#include "quixotism_c.hpp"
+#include "shader_manager.hpp"
 #include "vertex_array_manager.hpp"
 
 namespace quixotism {
@@ -35,10 +37,8 @@ class QuixotismRenderer {
 
   VertexArrayID vao = 0, text_vao = 0;
   GLBufferID vbo = 0, ebo = 0, text_vbo_id = 0;
-  unsigned int shaderProgram;
+  ShaderID shader_id, font_shader_id;
   unsigned int texture1;
-
-  u32 text_shader_program = 0;
 
  private:
   QuixotismRenderer();
@@ -50,6 +50,8 @@ class QuixotismRenderer {
 
   std::unique_ptr<u8[]> cached_text_vert_buffer;
   size_t cached_text_vert_buffer_size = 0;
+
+  ShaderManager shader_mgr;
 };
 
 }  // namespace quixotism

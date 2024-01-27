@@ -18,7 +18,7 @@ enum BufferDataMode : u32 {
 
 struct GLBuffer {
   static constexpr u32 INVALID_BUFFER_ID = 0;
-  u32 gl_id = INVALID_BUFFER_ID;
+  u32 id = INVALID_BUFFER_ID;
 };
 
 bool GLBufferData(GLBuffer &buffer, void *data, size_t size,

@@ -80,6 +80,10 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
     }
   }
 
+  i32 space_advance;
+  stbtt_GetCodepointHMetrics(&font_info, ' ', &space_advance, &lsb);
+  space_advance *= font_scale;
+
   i32 ascent, descent, line_gap;
   stbtt_GetFontVMetrics(&font_info, &ascent, &descent, &line_gap);
   ascent *= font_scale;
@@ -97,6 +101,7 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
               ascent,
               descent,
               line_gap,
+              space_advance,
               std::move(kerning_table),
               kerning_size};
 }

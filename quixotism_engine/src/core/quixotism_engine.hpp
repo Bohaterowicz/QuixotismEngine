@@ -31,12 +31,13 @@ class QuixotismEngine {
 
   Font font;
 
+  PlatformServices services;
+
  private:
   QuixotismEngine() {}
 
   void InitTextFonts();
 
-  PlatformServices services;
   WindowDim window_dim{};
 };
 

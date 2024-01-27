@@ -30,54 +30,15 @@ void QuixotismRenderer::ClearRenderTarget() {
 }
 
 void QuixotismRenderer::CompileTextShader() {
-  const char *vertexShaderSource =
-      "#version 330 core\n"
-      "layout (location = 0) in vec2 aPos;\n"
-      "layout (location = 1) in vec2 aTexCoord;\n"
-      "out vec2 TexCoord;\n"
-      "void main()\n"
-      "{\n"
-      "   gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
-      "   TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
-      "}\0";
-  const char *fragmentShaderSource =
-      "#version 330 core\n"
-      "out vec4 FragColor;\n"
-      "in vec2 TexCoord;\n"
-      "uniform sampler2D texture1;\n"
-      "void main()\n"
-      "{\n"
-      "   FragColor = vec4(1.0f, 1.0f, 1.0f, texture(texture1, TexCoord));\n"
-      "}\n\0";
-  unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  GLCall(glShaderSource(vertexShader, 1, &vertexShaderSource, NULL));
-  GLCall(glCompileShader(vertexShader));
+  const char *vertex_source_path =
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/font_basic.vert";
+  const char *fragment_source_path =
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/font_basic.frag";
 
-  int ErrorResult = 0;
-  GLCall(glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &ErrorResult));
-
-  if (ErrorResult == GL_FALSE) {
-    assert(0);
-  }
-
-  unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  GLCall(glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL));
-  GLCall(glCompileShader(fragmentShader));
-
-  GLCall(glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &ErrorResult));
-
-  if (ErrorResult == GL_FALSE) {
-    assert(0);
-  }
-
-  text_shader_program = glCreateProgram();
-  GLCall(glAttachShader(text_shader_program, vertexShader));
-  GLCall(glAttachShader(text_shader_program, fragmentShader));
-  GLCall(glLinkProgram(text_shader_program));
-  GLCall(glValidateProgram(text_shader_program));
-
-  GLCall(glDeleteShader(vertexShader));
-  GLCall(glDeleteShader(fragmentShader));
+  ShaderStageSpec shader_spec;
+  shader_spec.emplace_back(ShaderStageType::VERTEX, vertex_source_path);
+  shader_spec.emplace_back(ShaderStageType::FRAGMENT, fragment_source_path);
+  font_shader_id = shader_mgr.CreateShader(shader_spec);
 }
 
 void QuixotismRenderer::Test() {
@@ -107,21 +68,14 @@ void QuixotismRenderer::Test() {
         "   FragColor = vec4(1.0f, 1.0f, 1.0f, texture(texture1, TexCoord));\n"
         "}\n\0";
 
-    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    ShaderStageSpec shader_spec;
+    shader_spec.emplace_back(
+        ShaderStageType::VERTEX,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.vert");
+    shader_spec.emplace_back(
+        ShaderStageType::FRAGMENT,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.frag");
+    shader_id = shader_mgr.CreateShader(shader_spec);
 
     float vertices[] = {
         0.5f,  0.5f,  0.0f, 1.0f, 1.0f,  // top right
@@ -188,8 +142,12 @@ void QuixotismRenderer::Test() {
                  GL_UNSIGNED_BYTE, bitmap.GetBitmapPtr());
     glGenerateTextureMipmap(texture1);
   }
-  glUseProgram(shaderProgram);
-  glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
+  auto shader = shader_mgr.Get(shader_id);
+  if (!shader) {
+    assert(0);
+  }
+  glUseProgram((*shader).id);
+  glUniform1i(glGetUniformLocation((*shader).id, "texture1"), 0);
   auto vbo_buf = gl_buffer_mgr.Get(vbo);
   auto ebo_buf = gl_buffer_mgr.Get(ebo);
   auto vao_ = vertex_array_mgr.Get(vao);
@@ -248,6 +206,7 @@ void QuixotismRenderer::DrawText() {
 
   // now we fill the vertex data buffer
   auto &font = QuixotismEngine::GetEngine().font;
+  auto space_advance = font.GetSpaceAdvance();
   auto *vert = reinterpret_cast<GlyphVert *>(cached_text_vert_buffer.get());
   auto window_dim = QuixotismEngine::GetEngine().GetWindowDim();
   for (const auto &text_info : draw_text_queue) {
@@ -258,7 +217,7 @@ void QuixotismRenderer::DrawText() {
     for (const auto &c : text_info.text) {
       codepoint = c;
       if (codepoint == ' ') {
-        position_x += 35 / screen_scale_x;
+        position_x += space_advance / screen_scale_x;
         continue;
       }
       auto coord = font.GetCodepointBitmapCoord(codepoint);
@@ -339,8 +298,10 @@ void QuixotismRenderer::DrawText() {
   BindVertexBufferToVertexArray(*vao, *vbo, 0);
   BindVertexArray(*vao);
   // setup shader
-  GLCall(glUseProgram(text_shader_program));
-  GLCall(glUniform1i(glGetUniformLocation(text_shader_program, "texture1"), 0));
+  auto font_shader = shader_mgr.Get(font_shader_id);
+  assert(font_shader);
+  GLCall(glUseProgram((*font_shader).id));
+  GLCall(glUniform1i(glGetUniformLocation((*font_shader).id, "texture1"), 0));
 
   // draw call
   // disable depth testing for screen text rendering

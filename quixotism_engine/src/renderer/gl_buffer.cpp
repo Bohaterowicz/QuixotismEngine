@@ -7,7 +7,7 @@ namespace quixotism {
 bool GLBufferData(GLBuffer &buffer, void *data, size_t size,
                   BufferDataMode mode) {
   if (data && size) {
-    GLCall(glNamedBufferData(buffer.gl_id, size, data, mode));
+    GLCall(glNamedBufferData(buffer.id, size, data, mode));
     return true;
   }
   return false;
