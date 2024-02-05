@@ -41,12 +41,12 @@ using r32 = float;
 using r64 = double;
 
 template <typename T, size_t N>
-consteval auto ArraySize(T (&Arr)[N]) {
+inline consteval auto ArraySize(T (&Arr)[N]) {
   return N;
 }
 
 template <typename T>
-inline void SwapPointers(T *A, T *B) {
+inline constexpr void SwapPointers(T *A, T *B) {
   T *C = A;
   A = B;
   B = C;

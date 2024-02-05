@@ -132,12 +132,7 @@ class Vec3 {
       r32 x, y, z;
     };
     struct {
-      // Vec3 is also used sometimes to represent rotations, Sice in our
-      // convention the default engine forward direction that all objects face
-      // by default is the +x-axis (1, 0, 0), and the up direction is the y
-      // axis, thus the right vector i the +z axis, this means that roll is
-      // around the x, yaw around y and pitch around z
-      r32 roll, yaw, pitch;
+      r32 pitch, yaw, roll;
     };
     r32 e[3];
   };
@@ -291,7 +286,18 @@ class IVec4 {};
 
 template <class T>
 T Normalize(const T A) {
-  return A.Normalize();
+  T Result = A;
+  return Result.Normalize();
+}
+
+template <class T>
+T Length(const T A) {
+  return A.Length();
+}
+
+template <class T>
+T LengthSqr(const T A) {
+  return A.LengthSqr();
 }
 
 }  // namespace quixotism

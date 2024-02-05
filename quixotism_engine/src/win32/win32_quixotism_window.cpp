@@ -1,5 +1,6 @@
 #include "win32_quixotism_window.hpp"
 
+#include "dbg_print.hpp"
 #include "win32_quixotism_opengl.hpp"
 
 namespace quixotism::win32 {
@@ -32,15 +33,116 @@ static bool Win32SetPixelFormat(HWND window) {
   return false;
 }
 
-void Win32QuixotismWindow::ProcessWindowMessages() {
+static void Win32ProcessKeyboardInput(ButtonState &new_state, bool is_down) {
+  if (new_state.ended_down != is_down) {
+    new_state.ended_down = is_down;
+    new_state.half_transition_count++;
+  }
+}
+
+void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
   MSG message;
   while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE) == TRUE) {
     switch (message.message) {
+      case WM_RBUTTONDOWN: {
+        camera_control_mode = true;
+        i32 center_x = width / 2;
+        i32 center_y = height / 2;
+        POINT center_pos = {center_x, center_y};
+        ClientToScreen(handle, &center_pos);
+        SetCursorPos(center_pos.x, center_pos.y);
+      } break;
+      case WM_RBUTTONUP: {
+        camera_control_mode = false;
+      } break;
+      case WM_SYSKEYDOWN:
+      case WM_SYSKEYUP:
+      case WM_KEYDOWN:
+      case WM_KEYUP: {
+        constexpr u32 WAS_DOWN_BIT_SHIFT = 30;
+        constexpr u32 IS_DOWN_BIT_SHIFT = 31;
+        constexpr u32 ALT_KEY_IS_DOWN_SHIFT = 29;
+        auto vk_code = static_cast<u32>(message.wParam);
+        // 30th bit in LParam indicates if the key was pressed down before
+        // (previous state)
+        bool was_down = ((message.lParam & (1 << WAS_DOWN_BIT_SHIFT)) != 0);
+        // 31st bit in LParam indicates if the key is currently down (current
+        // state)
+        bool is_down = ((message.lParam & (1 << IS_DOWN_BIT_SHIFT)) == 0);
+
+        bool alt_key_was_down =
+            ((message.lParam & (1 << ALT_KEY_IS_DOWN_SHIFT)) != 0);
+
+        // If the key was down before, but now isnt, that means that the key got
+        // released, and the other way around This if statment pervents us from
+        // being flooded by key-repeat messages (meaning that a key is being
+        // held down)
+        if (was_down != is_down) {
+          if (vk_code == 'C') {
+            if (is_down) {
+              DBG_PRINT("TOGGLING MOUSE VISIBILITY");
+              /*
+              Win32ProcessKeyboardInput(KeyboardController.Start, is_down);
+              AppState.ToggleCursorHidden();
+              if (AppState.IsCursorHidden()) {
+                ShowCursor(FALSE);
+              } else {
+                ShowCursor(TRUE);
+              }
+              */
+            }
+          }
+          if (vk_code == 'E') {
+            Win32ProcessKeyboardInput(input.up, is_down);
+          }
+          if (vk_code == 'Q') {
+            Win32ProcessKeyboardInput(input.down, is_down);
+          }
+          if (vk_code == 'W') {
+            Win32ProcessKeyboardInput(input.forward, is_down);
+          }
+          if (vk_code == 'S') {
+            Win32ProcessKeyboardInput(input.backward, is_down);
+          }
+          if (vk_code == 'D') {
+            Win32ProcessKeyboardInput(input.right, is_down);
+          }
+          if (vk_code == 'A') {
+            Win32ProcessKeyboardInput(input.left, is_down);
+          }
+          if (vk_code == VK_ESCAPE) {
+            Shutdown();
+          }
+          if (vk_code == VK_F4 && alt_key_was_down) {
+            Shutdown();
+          }
+        }
+      } break;
       default: {
         TranslateMessage(&message);
         DispatchMessageA(&message);
       } break;
     }
+  }
+}
+
+void Win32QuixotismWindow::ProcessMouseMovement(ControllerInput &input) {
+  if (camera_control_mode) {
+    POINT mouse_pos = {};
+    GetCursorPos(&mouse_pos);
+    ScreenToClient(handle, &mouse_pos);
+    i32 center_x = width / 2;
+    i32 center_y = height / 2;
+
+    input.mouse_x_delta = mouse_pos.x - center_x;
+    input.mouse_y_delta = mouse_pos.y - center_y;
+
+    POINT center_pos = {center_x, center_y};
+    ClientToScreen(handle, &center_pos);
+    SetCursorPos(center_pos.x, center_pos.y);
+  } else {
+    input.mouse_x_delta = 0;
+    input.mouse_y_delta = 0;
   }
 }
 
@@ -62,6 +164,12 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND window_handle,
         // Could not set pixel format or initialize opengl.. abort
         PostQuitMessage(-1);
       }
+    } break;
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    case WM_KEYDOWN:
+    case WM_KEYUP: {
+      assert(!"Keyboard event came from wrong dispatch......");
     } break;
     default: {
       result = DefWindowProcA(window_handle, message, wparam, lparam);

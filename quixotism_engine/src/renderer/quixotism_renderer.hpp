@@ -36,8 +36,8 @@ class QuixotismRenderer {
   GLBufferManager gl_buffer_mgr;
 
   VertexArrayID vao = 0, text_vao = 0;
-  GLBufferID vbo = 0, ebo = 0, text_vbo_id = 0;
-  ShaderID shader_id, font_shader_id;
+  GLBufferID vbo = 0, ebo = 0, vbo2, ebo2, text_vbo_id = 0;
+  ShaderID shader_id, shader_id2, font_shader_id;
   unsigned int texture1;
 
  private:

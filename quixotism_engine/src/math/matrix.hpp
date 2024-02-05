@@ -18,7 +18,10 @@ class Mat2 {
 
   static Mat2 Identity() { return Mat2(1.0); }
 
-  void T() { std::swap(columns[0][1], columns[1][0]); }
+  Mat2 T() {
+    std::swap(columns[0][1], columns[1][0]);
+    return *this;
+  }
 
   Mat2 Dot(const Mat2 &b) const {
     Mat2 result;
@@ -46,10 +49,11 @@ class Mat3 {
 
   static Mat3 Identity() { return Mat3(1.0); }
 
-  void T() {
+  Mat3 T() {
     std::swap(columns[0][1], columns[1][0]);
     std::swap(columns[0][2], columns[2][0]);
     std::swap(columns[1][2], columns[2][1]);
+    return *this;
   }
 
   Mat3 Dot(const Mat3 &b) const {
@@ -86,13 +90,14 @@ class Mat4 {
 
   static Mat4 Identity() { return Mat4(1.0); }
 
-  void T() {
+  Mat4 T() {
     std::swap(columns[0][1], columns[1][0]);
     std::swap(columns[0][2], columns[2][0]);
     std::swap(columns[0][3], columns[3][0]);
     std::swap(columns[1][2], columns[2][1]);
     std::swap(columns[1][3], columns[3][1]);
     std::swap(columns[2][3], columns[3][2]);
+    return *this;
   }
 
   Mat4 Dot(const Mat4 &b) const {

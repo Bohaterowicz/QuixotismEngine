@@ -3,7 +3,7 @@
 
 #include <utility>
 
-#include "math/vector.hpp"
+#include "core/input.hpp"
 
 namespace quixotism::win32 {
 
@@ -33,7 +33,8 @@ class Win32QuixotismWindow {
   void Shutdown() { shutdown_requested = true; }
   [[nodiscard]] bool ShutdownRequested() const { return shutdown_requested; }
 
-  void ProcessWindowMessages();
+  void ProcessWindowMessages(ControllerInput &input);
+  void ProcessMouseMovement(ControllerInput &input);
 
   static constexpr i32 DEFAULT_WINDOW_WIDHT = 800;
   static constexpr i32 DEFAULT_WINDOW_HEIGHT = 600;
@@ -47,6 +48,8 @@ class Win32QuixotismWindow {
   i32 height = DEFAULT_WINDOW_HEIGHT;
 
   bool shutdown_requested = false;
+
+  bool camera_control_mode = false;
 };
 
 [[nodiscard]] bool Win32RegisterAndCreateWindow(Win32QuixotismWindow &window);

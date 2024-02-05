@@ -83,7 +83,7 @@ ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
       gl_stages.push_back(std::move(*gl_stage));
       (*gl_stage).attached_shader = shader.id;
     } else {
-      return INVALID_ID;
+       return INVALID_ID;
     }
   }
 

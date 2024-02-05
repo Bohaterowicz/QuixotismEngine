@@ -1,7 +1,9 @@
 #include <Windows.h>
 
+#include <format>
 #include <memory>
 
+#include "core/input.hpp"
 #include "core/platform_services.hpp"
 #include "core/quixotism_engine.hpp"
 #include "dbg_print.hpp"
@@ -50,25 +52,43 @@ int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     return 1;
   }
 
+  auto platform_services = quixotism::win32::InitPlatformServices();
+
   const auto [width, height] = quixotism_window.GetDimensions();
-  POINT center_pos = {width / 2, height / 2};
+  auto &engine = quixotism::QuixotismEngine::GetEngine();
+  quixotism::WindowDim window_dim{.width = width, .height = height};
+  engine.Init(platform_services, window_dim);
+
+  quixotism::ControllerInput input[2] = {};
+  quixotism::ControllerInput *new_input = &input[0];
+  quixotism::ControllerInput *prev_input = &input[1];
+
+  POINT center_pos = { width / 2, height / 2 };
   ClientToScreen(quixotism_window.GetHandle(), &center_pos);
   SetCursorPos(center_pos.x, center_pos.y);
 
-  auto platform_services = quixotism::win32::InitPlatformServices();
-
-  auto &engine = quixotism::QuixotismEngine::GetEngine();
-  engine.Init(platform_services);
-  engine.UpdateWindowSize(width, height);
+  i64 perf_freq = _Query_perf_frequency();
+  i64 start_counter = _Query_perf_counter();
+  r32 delta_t = 0;
 
   // Main engine loop, we keep running as long as the window was not requested
   // to close or the engine itself shutdown
   while (!quixotism_window.ShutdownRequested()) {
-    quixotism_window.ProcessWindowMessages();
-    engine.UpdateAndRender();
+    quixotism_window.ProcessWindowMessages(*new_input);
+    quixotism_window.ProcessMouseMovement(*new_input);
+    engine.UpdateAndRender(*new_input, delta_t);
     HDC window_dc = GetDC(quixotism_window.GetHandle());
     SwapBuffers(window_dc);
     ReleaseDC(quixotism_window.GetHandle(), window_dc);
+    SwapPointers(&new_input, &prev_input);
+
+    i64 end_counter = _Query_perf_counter();
+    i64 counter_elapsed = end_counter - start_counter;
+    delta_t = static_cast<r32>(counter_elapsed) / static_cast<r32>(perf_freq);
+
+    auto buffer = std::format("md_delta: {}\n", delta_t);
+    OutputDebugStringA(buffer.c_str());
+    start_counter = end_counter;
   }
 
   return 0;

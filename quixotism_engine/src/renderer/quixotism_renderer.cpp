@@ -1,8 +1,11 @@
 #include "quixotism_renderer.hpp"
 
 #include "GL/glew.h"
+#include "GLM/glm.hpp"
+#include "GLM/gtc/type_ptr.hpp"
 #include "core/quixotism_engine.hpp"
 #include "dbg_print.hpp"
+#include "file_processing/obj_parser/obj_parser.hpp"
 #include "gl_call.hpp"
 #include "vertex_buffer_layout.hpp"
 
@@ -48,25 +51,9 @@ void QuixotismRenderer::Test() {
 
     CompileTextShader();
 
-    const char *vertexShaderSource =
-        "#version 330 core\n"
-        "layout (location = 0) in vec3 aPos;\n"
-        "layout (location = 1) in vec2 aTexCoord;\n"
-        "out vec2 TexCoord;\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-        "   TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
-        "}\0";
-    const char *fragmentShaderSource =
-        "#version 330 core\n"
-        "out vec4 FragColor;\n"
-        "in vec2 TexCoord;\n"
-        "uniform sampler2D texture1;\n"
-        "void main()\n"
-        "{\n"
-        "   FragColor = vec4(1.0f, 1.0f, 1.0f, texture(texture1, TexCoord));\n"
-        "}\n\0";
+    auto obj_data = QuixotismEngine::GetEngine().services.read_file(
+        "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
+    auto meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
 
     ShaderStageSpec shader_spec;
     shader_spec.emplace_back(
@@ -76,6 +63,15 @@ void QuixotismRenderer::Test() {
         ShaderStageType::FRAGMENT,
         "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.frag");
     shader_id = shader_mgr.CreateShader(shader_spec);
+
+    shader_spec = {};
+    shader_spec.emplace_back(
+        ShaderStageType::VERTEX,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/model.vert");
+    shader_spec.emplace_back(
+        ShaderStageType::FRAGMENT,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/model.frag");
+    shader_id2 = shader_mgr.CreateShader(shader_spec);
 
     float vertices[] = {
         0.5f,  0.5f,  0.0f, 1.0f, 1.0f,  // top right
@@ -99,20 +95,20 @@ void QuixotismRenderer::Test() {
       assert(0);
     }
 
+    vbo_id = gl_buffer_mgr.Create();
+    ebo_id = gl_buffer_mgr.Create();
+    if (vbo_id && ebo_id) {
+      vbo2 = vbo_id;
+      ebo2 = ebo_id;
+    } else {
+      assert(0);
+    }
+
     VertexBufferLayout layout;
     layout.AddLayoutElementF(3, false, 0);
     layout.AddLayoutElementF(2, false, 0);
     if (auto vao_id = vertex_array_mgr.Create(layout)) {
       vao = *vao_id;
-    } else {
-      assert(0);
-    }
-
-    VertexBufferLayout layout2;
-    layout2.AddLayoutElementF(2, false, 0);
-    layout2.AddLayoutElementF(2, false, 0);
-    if (auto vao_id = vertex_array_mgr.Create(layout2)) {
-      text_vao = *vao_id;
     } else {
       assert(0);
     }
@@ -123,6 +119,26 @@ void QuixotismRenderer::Test() {
       GLBufferData(*vbo_buf, vertices, sizeof(vertices),
                    BufferDataMode::STATIC_DRAW);
       GLBufferData(*ebo_buf, indices, sizeof(indices),
+                   BufferDataMode::STATIC_DRAW);
+    }
+
+    std::vector<void *> vertex_data_buffers = {
+        meshes[0].VertexPosData.data(), meshes[0].VertexTexCoordData.data()};
+    std::vector<u32 *> vertex_index_buffers = {
+        meshes[0].VertexTriangleIndicies.PosIdx.data(),
+        meshes[0].VertexTriangleIndicies.TexCoordIdx.data()};
+    auto vertex_count = meshes[0].VertexTriangleIndicies.PosIdx.size();
+    auto [vertex_buffer, vertex_buffer_size] = SerializeVertexDataByLayout(
+        vertex_data_buffers, vertex_index_buffers, vertex_count, layout);
+    auto index_buffer = GenerateSerialIndexBuffer(vertex_count);
+    size_t index_buffer_size = vertex_count * sizeof(u32);
+
+    vbo_buf = gl_buffer_mgr.Get(vbo2);
+    ebo_buf = gl_buffer_mgr.Get(ebo2);
+    if (vbo_buf && ebo_buf) {
+      GLBufferData(*vbo_buf, vertex_buffer.get(), vertex_buffer_size,
+                   BufferDataMode::STATIC_DRAW);
+      GLBufferData(*ebo_buf, index_buffer.get(), index_buffer_size,
                    BufferDataMode::STATIC_DRAW);
     }
 
@@ -154,9 +170,32 @@ void QuixotismRenderer::Test() {
   if (!vbo_buf || !ebo_buf || !vao_) {
     assert(0);
   }
-  BindVertexBufferToVertexArray(*vao_, *vbo_buf, *ebo_buf, 0);
   BindVertexArray(*vao_);
-  glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+  BindVertexBufferToVertexArray(*vao_, *vbo_buf, *ebo_buf, 0);
+  // GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
+
+  shader = shader_mgr.Get(shader_id2);
+  if (!shader) {
+    assert(0);
+  }
+  glUseProgram((*shader).id);
+
+  auto &camera = QuixotismEngine::GetEngine().GetCamera();
+  auto view = camera.GetViewMatrix();
+  auto proj = camera.GetProjectionMatrix();
+
+  int viewLoc = glGetUniformLocation((*shader).id, "view");
+  glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.DataPtr());
+  int projLoc = glGetUniformLocation((*shader).id, "projection");
+  glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj.DataPtr());
+
+  vbo_buf = gl_buffer_mgr.Get(vbo2);
+  ebo_buf = gl_buffer_mgr.Get(ebo2);
+  if (!vbo_buf || !ebo_buf) {
+    assert(0);
+  }
+  BindVertexBufferToVertexArray(*vao_, *vbo_buf, *ebo_buf, 0);
+  GLCall(glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0));
   DrawText();
 }
 
@@ -276,6 +315,18 @@ void QuixotismRenderer::DrawText() {
   if (!text_vbo_id) {
     if (auto id = gl_buffer_mgr.Create()) {
       text_vbo_id = id;
+    } else {
+      assert(0);
+    }
+  }
+
+  // if no font vao, create one
+  if (!text_vao) {
+    VertexBufferLayout font_vao_layout;
+    font_vao_layout.AddLayoutElementF(2, false, 0);
+    font_vao_layout.AddLayoutElementF(2, false, 0);
+    if (auto vao_id = vertex_array_mgr.Create(font_vao_layout)) {
+      text_vao = *vao_id;
     } else {
       assert(0);
     }

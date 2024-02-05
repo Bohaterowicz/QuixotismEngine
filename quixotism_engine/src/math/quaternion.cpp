@@ -14,12 +14,9 @@ Quaternion Quaternion::FromEulerAngles(Vec3 eualer_angels) {
 
   Quaternion result;
   result.w = cos_roll * cos_pitch * cos_yaw + sin_roll * sin_pitch * sin_yaw;
-  result.x = sin_roll * cos_pitch * cos_yaw -
-             cos_roll * sin_pitch * sin_yaw;  // roll (cos of roll)
-  result.y = cos_roll * cos_pitch * sin_yaw -
-             sin_roll * sin_pitch * cos_yaw;  // yaw (cos of yaw)
-  result.z = cos_roll * sin_pitch * cos_yaw +
-             sin_roll * cos_pitch * sin_yaw;  // pitch (cos of pitch)
+  result.x = sin_roll * cos_pitch * cos_yaw - cos_roll * sin_pitch * sin_yaw;
+  result.y = cos_roll * cos_pitch * sin_yaw - sin_roll * sin_pitch * cos_yaw;
+  result.z = cos_roll * sin_pitch * cos_yaw + sin_roll * cos_pitch * sin_yaw;
 
   return result;
 }

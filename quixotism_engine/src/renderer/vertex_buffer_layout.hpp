@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+#include <utility>
 #include <vector>
 
 #include "quixotism_c.hpp"
@@ -36,4 +38,10 @@ class VertexBufferLayout {
                         u32 binding_slot);
 };
 
+std::pair<std::unique_ptr<u8[]>, size_t> SerializeVertexDataByLayout(
+    const std::vector<void *> &vertex_data_buffers,
+    const std::vector<u32 *> &vertex_index_buffers, u32 vertex_count,
+    const VertexBufferLayout &layout);
+
+std::unique_ptr<u32[]> GenerateSerialIndexBuffer(u32 vertex_count);
 }  // namespace quixotism
