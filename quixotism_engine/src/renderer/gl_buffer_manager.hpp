@@ -11,9 +11,9 @@ using GLBufferID = u32;
 
 class GLBufferManager {
  public:
+  CLASS_DELETE_COPY(GLBufferManager);
   static constexpr size_t ARRAY_SIZE = 256;
   static constexpr GLBufferID INVALID_ID = 0;
-  CLASS_DELETE_COPY(GLBufferManager);
   GLBufferManager() {
     for (u32 i = 1; i < ARRAY_SIZE; ++i) {
       free_ids.push(i);

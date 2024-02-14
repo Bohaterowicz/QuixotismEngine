@@ -63,7 +63,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   quixotism::ControllerInput *new_input = &input[0];
   quixotism::ControllerInput *prev_input = &input[1];
 
-  POINT center_pos = { width / 2, height / 2 };
+  POINT center_pos = {width / 2, height / 2};
   ClientToScreen(quixotism_window.GetHandle(), &center_pos);
   SetCursorPos(center_pos.x, center_pos.y);
 
@@ -86,7 +86,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     i64 counter_elapsed = end_counter - start_counter;
     delta_t = static_cast<r32>(counter_elapsed) / static_cast<r32>(perf_freq);
 
-    auto buffer = std::format("md_delta: {}\n", delta_t);
+    auto buffer = std::format("ms_delta: {}\n", delta_t);
     OutputDebugStringA(buffer.c_str());
     start_counter = end_counter;
   }

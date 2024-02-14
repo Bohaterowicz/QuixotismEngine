@@ -180,8 +180,14 @@ void QuixotismRenderer::Test() {
   }
   glUseProgram((*shader).id);
 
-  auto &camera = QuixotismEngine::GetEngine().GetCamera();
-  auto view = camera.GetViewMatrix();
+  auto camera_id = QuixotismEngine::GetEngine().GetCamera();
+  auto &camera =
+      QuixotismEngine::GetEngine().entity_mgr.GetComponent<CameraComponent>(
+          camera_id);
+  auto &transform =
+      QuixotismEngine::GetEngine().entity_mgr.GetComponent<TransformComponent>(
+          camera_id);
+  auto view = transform.GetOrientationMatrix();
   auto proj = camera.GetProjectionMatrix();
 
   int viewLoc = glGetUniformLocation((*shader).id, "view");

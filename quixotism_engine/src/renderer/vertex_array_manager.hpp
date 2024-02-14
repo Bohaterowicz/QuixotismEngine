@@ -12,10 +12,9 @@ using VertexArrayID = u32;
 
 class VertexArrayManager {
  public:
+  CLASS_DELETE_COPY(VertexArrayManager);
   static constexpr size_t ARRAY_SIZE = 128;
   static constexpr VertexArrayID INVALID_ID = 0;
-
-  CLASS_DELETE_COPY(VertexArrayManager);
 
   VertexArrayManager() {
     for (u32 i = 1; i < ARRAY_SIZE; ++i) {

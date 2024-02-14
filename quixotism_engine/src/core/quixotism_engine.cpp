@@ -1,6 +1,8 @@
 #include "quixotism_engine.hpp"
 
+#include "core/constants.hpp"
 #include "dbg_print.hpp"
+#include "file_processing/obj_parser/obj_parser.hpp"
 #include "renderer/quixotism_renderer.hpp"
 
 namespace quixotism {
@@ -10,30 +12,41 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   services = init_services;
   window_dim = dim;
 
-  camera = Camera{
+  Entity camera;
+  TransformComponent transform;
+  CameraComponent cam_com{
       DegToRad(45.0),
       static_cast<r32>(window_dim.width) / static_cast<r32>(window_dim.height),
       0.01f, 1000.0f};
+  camera.AddComponent(transform);
+  camera.AddComponent(cam_com);
 
-  camera.SetPosition(Vec3{-150, 0, 50});
+  camera_id = entity_mgr.Add(std::move(camera));
+
+  auto &cam_transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
+  cam_transform.SetPosition(Vec3{-150, 0, 50});
 
   InitTextFonts();
+
+  auto obj_data = QuixotismEngine::GetEngine().services.read_file(
+      "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
+  auto meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
 }
 
 void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
-  auto& transform = camera.GetTransform();
+  auto &transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
 
   auto speed = 50.0F;  // m/s
   auto rotation_speed = 1.0F;
   auto movement = Vec3{0.0F};
 
   if (input.up.ended_down) {
-    movement += Transform::UP;
+    movement += UP;
   }
   if (input.down.ended_down) {
-    movement += -Transform::UP;
+    movement += -UP;
   }
   if (input.forward.ended_down) {
     movement += transform.Forward();

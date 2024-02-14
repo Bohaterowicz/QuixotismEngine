@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "core/camera.hpp"
+#include "core/entity_manager.hpp"
 #include "core/input.hpp"
 #include "core/platform_services.hpp"
 #include "fonts/font.hpp"
@@ -29,18 +29,19 @@ class QuixotismEngine {
   void UpdateWindowSize(i32 width, i32 height) { window_dim = {width, height}; }
   WindowDim GetWindowDim() const { return window_dim; }
 
-  Camera& GetCamera() { return camera; }
+  EntityId GetCamera() const { return camera_id; }
 
   void DrawText(std::string&& text, float x, float y, r32 scale);
 
   Font font;
 
   PlatformServices services;
+  EntityManager entity_mgr;
 
  private:
   QuixotismEngine() {}
 
-  Camera camera;
+  EntityId camera_id;
 
   void InitTextFonts();
 
