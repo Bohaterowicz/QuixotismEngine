@@ -5,6 +5,7 @@
 #include "core/entity_manager.hpp"
 #include "core/input.hpp"
 #include "core/platform_services.hpp"
+#include "core/static_mesh_manager.hpp"
 #include "fonts/font.hpp"
 
 namespace quixotism {
@@ -37,11 +38,12 @@ class QuixotismEngine {
 
   PlatformServices services;
   EntityManager entity_mgr;
+  StaticMeshManager static_mesh_mgr;
 
  private:
   QuixotismEngine() {}
 
-  EntityId camera_id;
+  EntityId camera_id, box_id;
 
   void InitTextFonts();
 

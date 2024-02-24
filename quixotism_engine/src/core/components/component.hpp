@@ -7,6 +7,7 @@ namespace quixotism {
 enum ComponentType {
   TRANSFORM,
   CAMERA,
+  STATIC_MESH,
   __COUNT__,
 };
 

@@ -63,6 +63,7 @@ void VertexArrayManager::SpecifyAttributeLayout(
     ++attribute_location;
     vao.stride += element.count * element.type_size;
   }
+  vao.layout = layout;
 }
 
 }  // namespace quixotism

@@ -1,4 +1,5 @@
 file(GLOB CORE_SOURCES "src/core/*.cpp")
+file(GLOB CONTAINER_SOURCES "src/containers/*.cpp")
 file(GLOB FONT_SOURCES "src/fonts/*.cpp")
 file(GLOB BITMAP_PROCESS_SOURCES "src/bitmap_processing/*.cpp")
 file(GLOB RENDERER_SOURCES "src/renderer/*.cpp")

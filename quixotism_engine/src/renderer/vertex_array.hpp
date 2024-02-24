@@ -3,6 +3,7 @@
 #include "gl_buffer.hpp"
 #include "gl_call.hpp"
 #include "quixotism_c.hpp"
+#include "vertex_buffer_layout.hpp"
 
 namespace quixotism {
 
@@ -10,6 +11,7 @@ struct VertexArray {
   static constexpr u32 INVALID_VAO_ID = 0;
   u32 id = INVALID_VAO_ID;
   size_t stride = 0;
+  VertexBufferLayout layout;
 };
 
 inline void BindVertexArray(const VertexArray &vao) {

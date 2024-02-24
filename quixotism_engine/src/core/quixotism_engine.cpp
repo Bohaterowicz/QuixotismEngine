@@ -23,7 +23,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
   camera_id = entity_mgr.Add(std::move(camera));
 
-  auto &cam_transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
+  auto& cam_transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
   cam_transform.SetPosition(Vec3{-150, 0, 50});
 
   InitTextFonts();
@@ -31,12 +31,23 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   auto obj_data = QuixotismEngine::GetEngine().services.read_file(
       "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
   auto meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
+
+  StaticMesh smesh{std::move(meshes[0])};
+  auto mesh_id = static_mesh_mgr.Add(std::move(smesh));
+  QuixotismRenderer::GetRenderer().MakeDrawableStaticMesh(mesh_id);
+
+  Entity box;
+  TransformComponent box_transform;
+  StaticMeshComponent box_sm{mesh_id};
+  box.AddComponent(box_transform);
+  box.AddComponent(box_sm);
+  box_id = entity_mgr.Add(std::move(box));
 }
 
 void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
-  auto &transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
+  auto& transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
 
   auto speed = 50.0F;  // m/s
   auto rotation_speed = 1.0F;
@@ -93,7 +104,8 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   renderer.ClearRenderTarget();
   DrawText("Te, Tog, Hyello Text! Much to do porter, ying yang. jhon", -0.98,
            0.8f, 0.4);
-  renderer.Test();
+  renderer.DrawStaticMeshes();
+  renderer.DrawText();
 }
 
 void QuixotismEngine::InitTextFonts() {

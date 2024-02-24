@@ -25,6 +25,51 @@ QuixotismRenderer::QuixotismRenderer() {
   GLCall(glClearDepth(1.0F));
   GLCall(glClearStencil(0));
   DBG_PRINT("Specified clear colors");
+
+  VertexBufferLayout layout;
+  layout.AddLayoutElementF(3, false, 0);
+  layout.AddLayoutElementF(2, false, 0);
+  if (auto new_vao = vertex_array_mgr.Create(layout)) {
+    vao_id = *new_vao;
+  } else {
+    assert(0);
+  }
+
+  ShaderStageSpec shader_spec;
+  shader_spec.emplace_back(
+      ShaderStageType::VERTEX,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.frag");
+  shader_id = shader_mgr.CreateShader(shader_spec);
+
+  shader_spec = {};
+  shader_spec.emplace_back(
+      ShaderStageType::VERTEX,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/model.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/model.frag");
+  shader_id2 = shader_mgr.CreateShader(shader_spec);
+
+  CompileTextShader();
+
+  glGenTextures(1, &texture1);
+  glBindTexture(GL_TEXTURE_2D, texture1);
+  // set the texture wrapping parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+  // set texture filtering parameters
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  auto &bitmap = QuixotismEngine::GetEngine().font.GetBitmap();
+  auto [width, height] = bitmap.GetDim();
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
+               GL_UNSIGNED_BYTE, bitmap.GetBitmapPtr());
+  glGenerateTextureMipmap(texture1);
 }
 
 void QuixotismRenderer::ClearRenderTarget() {
@@ -42,167 +87,6 @@ void QuixotismRenderer::CompileTextShader() {
   shader_spec.emplace_back(ShaderStageType::VERTEX, vertex_source_path);
   shader_spec.emplace_back(ShaderStageType::FRAGMENT, fragment_source_path);
   font_shader_id = shader_mgr.CreateShader(shader_spec);
-}
-
-void QuixotismRenderer::Test() {
-  static bool init = false;
-  if (!init) {
-    init = true;
-
-    CompileTextShader();
-
-    auto obj_data = QuixotismEngine::GetEngine().services.read_file(
-        "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
-    auto meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
-
-    ShaderStageSpec shader_spec;
-    shader_spec.emplace_back(
-        ShaderStageType::VERTEX,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.vert");
-    shader_spec.emplace_back(
-        ShaderStageType::FRAGMENT,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.frag");
-    shader_id = shader_mgr.CreateShader(shader_spec);
-
-    shader_spec = {};
-    shader_spec.emplace_back(
-        ShaderStageType::VERTEX,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/model.vert");
-    shader_spec.emplace_back(
-        ShaderStageType::FRAGMENT,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/model.frag");
-    shader_id2 = shader_mgr.CreateShader(shader_spec);
-
-    float vertices[] = {
-        0.5f,  0.5f,  0.0f, 1.0f, 1.0f,  // top right
-        0.5f,  -0.5f, 0.0f, 1.0f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,  // bottom left
-        -0.5f, 0.5f,  0.0f, 0.0f, 1.0f   // top left
-    };
-
-    unsigned int indices[] = {
-        // note that we start from 0!
-        0, 1, 3,  // first Triangle
-        1, 2, 3   // second Triangle
-    };
-
-    auto vbo_id = gl_buffer_mgr.Create();
-    auto ebo_id = gl_buffer_mgr.Create();
-    if (vbo_id && ebo_id) {
-      vbo = vbo_id;
-      ebo = ebo_id;
-    } else {
-      assert(0);
-    }
-
-    vbo_id = gl_buffer_mgr.Create();
-    ebo_id = gl_buffer_mgr.Create();
-    if (vbo_id && ebo_id) {
-      vbo2 = vbo_id;
-      ebo2 = ebo_id;
-    } else {
-      assert(0);
-    }
-
-    VertexBufferLayout layout;
-    layout.AddLayoutElementF(3, false, 0);
-    layout.AddLayoutElementF(2, false, 0);
-    if (auto vao_id = vertex_array_mgr.Create(layout)) {
-      vao = *vao_id;
-    } else {
-      assert(0);
-    }
-
-    auto vbo_buf = gl_buffer_mgr.Get(vbo);
-    auto ebo_buf = gl_buffer_mgr.Get(ebo);
-    if (vbo_buf && ebo_buf) {
-      GLBufferData(*vbo_buf, vertices, sizeof(vertices),
-                   BufferDataMode::STATIC_DRAW);
-      GLBufferData(*ebo_buf, indices, sizeof(indices),
-                   BufferDataMode::STATIC_DRAW);
-    }
-
-    std::vector<void *> vertex_data_buffers = {
-        meshes[0].VertexPosData.data(), meshes[0].VertexTexCoordData.data()};
-    std::vector<u32 *> vertex_index_buffers = {
-        meshes[0].VertexTriangleIndicies.PosIdx.data(),
-        meshes[0].VertexTriangleIndicies.TexCoordIdx.data()};
-    auto vertex_count = meshes[0].VertexTriangleIndicies.PosIdx.size();
-    auto [vertex_buffer, vertex_buffer_size] = SerializeVertexDataByLayout(
-        vertex_data_buffers, vertex_index_buffers, vertex_count, layout);
-    auto index_buffer = GenerateSerialIndexBuffer(vertex_count);
-    size_t index_buffer_size = vertex_count * sizeof(u32);
-
-    vbo_buf = gl_buffer_mgr.Get(vbo2);
-    ebo_buf = gl_buffer_mgr.Get(ebo2);
-    if (vbo_buf && ebo_buf) {
-      GLBufferData(*vbo_buf, vertex_buffer.get(), vertex_buffer_size,
-                   BufferDataMode::STATIC_DRAW);
-      GLBufferData(*ebo_buf, index_buffer.get(), index_buffer_size,
-                   BufferDataMode::STATIC_DRAW);
-    }
-
-    glGenTextures(1, &texture1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                    GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    auto &bitmap = QuixotismEngine::GetEngine().font.GetBitmap();
-    auto [width, height] = bitmap.GetDim();
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
-                 GL_UNSIGNED_BYTE, bitmap.GetBitmapPtr());
-    glGenerateTextureMipmap(texture1);
-  }
-  auto shader = shader_mgr.Get(shader_id);
-  if (!shader) {
-    assert(0);
-  }
-  glUseProgram((*shader).id);
-  glUniform1i(glGetUniformLocation((*shader).id, "texture1"), 0);
-  auto vbo_buf = gl_buffer_mgr.Get(vbo);
-  auto ebo_buf = gl_buffer_mgr.Get(ebo);
-  auto vao_ = vertex_array_mgr.Get(vao);
-  if (!vbo_buf || !ebo_buf || !vao_) {
-    assert(0);
-  }
-  BindVertexArray(*vao_);
-  BindVertexBufferToVertexArray(*vao_, *vbo_buf, *ebo_buf, 0);
-  // GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0));
-
-  shader = shader_mgr.Get(shader_id2);
-  if (!shader) {
-    assert(0);
-  }
-  glUseProgram((*shader).id);
-
-  auto camera_id = QuixotismEngine::GetEngine().GetCamera();
-  auto &camera =
-      QuixotismEngine::GetEngine().entity_mgr.GetComponent<CameraComponent>(
-          camera_id);
-  auto &transform =
-      QuixotismEngine::GetEngine().entity_mgr.GetComponent<TransformComponent>(
-          camera_id);
-  auto view = transform.GetOrientationMatrix();
-  auto proj = camera.GetProjectionMatrix();
-
-  int viewLoc = glGetUniformLocation((*shader).id, "view");
-  glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.DataPtr());
-  int projLoc = glGetUniformLocation((*shader).id, "projection");
-  glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj.DataPtr());
-
-  vbo_buf = gl_buffer_mgr.Get(vbo2);
-  ebo_buf = gl_buffer_mgr.Get(ebo2);
-  if (!vbo_buf || !ebo_buf) {
-    assert(0);
-  }
-  BindVertexBufferToVertexArray(*vao_, *vbo_buf, *ebo_buf, 0);
-  GLCall(glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0));
-  DrawText();
 }
 
 void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale) {
@@ -265,7 +149,7 @@ void QuixotismRenderer::DrawText() {
         position_x += space_advance / screen_scale_x;
         continue;
       }
-      auto coord = font.GetCodepointBitmapCoord(codepoint);
+      auto &coord = font.GetCodepointBitmapCoord(codepoint);
 
       auto &glyph_info = font.GetGlyphInfo(codepoint);
       auto glyph_width = static_cast<r32>(glyph_info.width) / screen_scale_x;
@@ -366,6 +250,82 @@ void QuixotismRenderer::DrawText() {
   GLCall(glDrawArrays(GL_TRIANGLES, 0, vertex_count));
   // enable depth testing back again
   GLCall(glDepthMask(GL_TRUE));
+}
+
+void QuixotismRenderer::DrawStaticMeshes() {
+  auto &engine = QuixotismEngine::GetEngine();
+
+  auto shader = shader_mgr.Get(shader_id2);
+  if (!shader) {
+    assert(0);
+  }
+  glUseProgram((*shader).id);
+
+  auto camera_id = engine.GetCamera();
+  auto &camera = engine.entity_mgr.GetComponent<CameraComponent>(camera_id);
+  auto &transform =
+      engine.entity_mgr.GetComponent<TransformComponent>(camera_id);
+  auto view = transform.GetOrientationMatrix();
+  auto proj = camera.GetProjectionMatrix();
+
+  int viewLoc = glGetUniformLocation((*shader).id, "view");
+  GLCall(glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.DataPtr()));
+  int projLoc = glGetUniformLocation((*shader).id, "projection");
+  GLCall(glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj.DataPtr()));
+
+  for (auto &static_mesh : engine.static_mesh_mgr) {
+    auto vao = vertex_array_mgr.Get(static_mesh.vao_id);
+    auto vbo = gl_buffer_mgr.Get(static_mesh.vbo_id);
+    auto ebo = gl_buffer_mgr.Get(static_mesh.ebo_id);
+    if (!vbo || !ebo || !vao) {
+      assert(0);
+    }
+    BindVertexArray(*vao);
+    BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
+    GLCall(glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0));
+  }
+}
+
+void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto sm_mesh = engine.static_mesh_mgr.Get(id);
+  if (!sm_mesh) return;
+
+  auto vbo_id = gl_buffer_mgr.Create();
+  auto ebo_id = gl_buffer_mgr.Create();
+  if (vbo_id && ebo_id) {
+    sm_mesh->vbo_id = vbo_id;
+    sm_mesh->ebo_id = ebo_id;
+  } else {
+    assert(0);
+  }
+
+  auto vao = *vertex_array_mgr.Get(vao_id);
+  sm_mesh->vao_id = vao_id;
+
+  auto &mesh = sm_mesh->GetMeshData();
+  std::vector<void *> vertex_data_buffers = {mesh.VertexPosData.data(),
+                                             mesh.VertexTexCoordData.data()};
+  std::vector<u32 *> vertex_index_buffers = {
+      mesh.VertexTriangleIndicies.PosIdx.data(),
+      mesh.VertexTriangleIndicies.TexCoordIdx.data()};
+  auto vertex_count = mesh.VertexTriangleIndicies.PosIdx.size();
+
+  auto [vertex_buffer, vertex_buffer_size] = SerializeVertexDataByLayout(
+      vertex_data_buffers, vertex_index_buffers, vertex_count, vao.layout);
+  auto index_buffer = GenerateSerialIndexBuffer(vertex_count);
+  size_t index_buffer_size = vertex_count * sizeof(u32);
+
+  auto vbo_buf = gl_buffer_mgr.Get(sm_mesh->vbo_id);
+  auto ebo_buf = gl_buffer_mgr.Get(sm_mesh->ebo_id);
+  if (vbo_buf && ebo_buf) {
+    GLBufferData(*vbo_buf, vertex_buffer.get(), vertex_buffer_size,
+                 BufferDataMode::STATIC_DRAW);
+    GLBufferData(*ebo_buf, index_buffer.get(), index_buffer_size,
+                 BufferDataMode::STATIC_DRAW);
+  } else {
+    assert(0);
+  }
 }
 
 }  // namespace quixotism

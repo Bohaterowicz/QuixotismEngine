@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/components/camera.hpp"
+#include "core/components/static_mesh.hpp"
 #include "core/components/transform.hpp"
 #include "quixotism_c.hpp"
 
@@ -12,6 +13,9 @@ template <class TYPE>
 constexpr bool IsTransformComponent = std::is_same_v<TYPE, TransformComponent>;
 template <class TYPE>
 constexpr bool IsCameraComponent = std::is_same_v<TYPE, CameraComponent>;
+template <class TYPE>
+constexpr bool IsStaticMeshComponent =
+    std::is_same_v<TYPE, StaticMeshComponent>;
 
 class ComponentManager {
  public:
@@ -30,6 +34,8 @@ class ComponentManager {
       return Add(transform_components, transform_free_ids, component);
     } else if constexpr (IsCameraComponent<TYPE>) {
       return Add(camera_components, camera_free_ids, component);
+    } else if constexpr (IsStaticMeshComponent<TYPE>) {
+      return Add(static_mesh_components, static_mesh_free_ids, component);
     } else {
       assert(0);
     }
@@ -37,7 +43,7 @@ class ComponentManager {
 
   template <class TYPE>
   TYPE& GetComponent(ComponentId id) {
-    if constexpr(IsTransformComponent<TYPE>) {
+    if constexpr (IsTransformComponent<TYPE>) {
       return transform_components[id];
     } else if constexpr (IsCameraComponent<TYPE>) {
       return camera_components[id];
@@ -77,6 +83,9 @@ class ComponentManager {
 
   std::queue<ComponentId> camera_free_ids;
   std::array<CameraComponent, ARRAY_SIZE> camera_components;
+
+  std::queue<ComponentId> static_mesh_free_ids;
+  std::array<StaticMeshComponent, ARRAY_SIZE> static_mesh_components;
 };
 
 }  // namespace quixotism
