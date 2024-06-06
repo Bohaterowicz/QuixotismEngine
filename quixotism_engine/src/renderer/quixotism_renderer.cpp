@@ -28,6 +28,7 @@ QuixotismRenderer::QuixotismRenderer() {
 
   VertexBufferLayout layout;
   layout.AddLayoutElementF(3, false, 0);
+  layout.AddLayoutElementF(3, false, 0);
   layout.AddLayoutElementF(2, false, 0);
   if (auto new_vao = vertex_array_mgr.Create(layout)) {
     vao_id = *new_vao;
@@ -54,22 +55,14 @@ QuixotismRenderer::QuixotismRenderer() {
   shader_id2 = shader_mgr.CreateShader(shader_spec);
 
   CompileTextShader();
-
-  glGenTextures(1, &texture1);
-  glBindTexture(GL_TEXTURE_2D, texture1);
-  // set the texture wrapping parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-  // set texture filtering parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  auto sampler = CreateSampler();
+  sampler_id = sampler_mgr.Add(std::move(sampler));
   auto &bitmap = QuixotismEngine::GetEngine().font.GetBitmap();
-  auto [width, height] = bitmap.GetDim();
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, width, height, 0, GL_RED,
-               GL_UNSIGNED_BYTE, bitmap.GetBitmapPtr());
-  glGenerateTextureMipmap(texture1);
+  auto font_texture = CreateTexture(bitmap);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+  texture_id = texture_mgr.Add(std::move(font_texture));
 }
 
 void QuixotismRenderer::ClearRenderTarget() {
@@ -239,10 +232,14 @@ void QuixotismRenderer::DrawText() {
   BindVertexBufferToVertexArray(*vao, *vbo, 0);
   BindVertexArray(*vao);
   // setup shader
-  auto font_shader = shader_mgr.Get(font_shader_id);
+  auto *font_shader = shader_mgr.Get(font_shader_id);
   assert(font_shader);
   GLCall(glUseProgram((*font_shader).id));
-  GLCall(glUniform1i(glGetUniformLocation((*font_shader).id, "texture1"), 0));
+  auto *font_texture = texture_mgr.Get(texture_id);
+  font_texture->BindUnit(0);
+  auto *sampler = sampler_mgr.Get(sampler_id);
+  font_shader->SetUniform("tex_sampler", 0);
+  GLCall(glBindSampler(0, sampler->Id()));
 
   // draw call
   // disable depth testing for screen text rendering
@@ -267,11 +264,12 @@ void QuixotismRenderer::DrawStaticMeshes() {
       engine.entity_mgr.GetComponent<TransformComponent>(camera_id);
   auto view = transform.GetOrientationMatrix();
   auto proj = camera.GetProjectionMatrix();
+  auto light_pos = Vec3{100, 100, 0};
 
-  int viewLoc = glGetUniformLocation((*shader).id, "view");
-  GLCall(glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view.DataPtr()));
-  int projLoc = glGetUniformLocation((*shader).id, "projection");
-  GLCall(glUniformMatrix4fv(projLoc, 1, GL_FALSE, proj.DataPtr()));
+  shader->SetUniform("view", view);
+  shader->SetUniform("projection", proj);
+  shader->SetUniform("view_pos", transform.position);
+  shader->SetUniform("light_pos", light_pos);
 
   for (auto &static_mesh : engine.static_mesh_mgr) {
     auto vao = vertex_array_mgr.Get(static_mesh.vao_id);
@@ -282,7 +280,10 @@ void QuixotismRenderer::DrawStaticMeshes() {
     }
     BindVertexArray(*vao);
     BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
-    GLCall(glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0));
+    GLCall(glDrawElements(
+        GL_TRIANGLES,
+        static_mesh.GetMeshData().VertexTriangleIndicies.PosIdx.size(),
+        GL_UNSIGNED_INT, 0));
   }
 }
 
@@ -305,9 +306,11 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
 
   auto &mesh = sm_mesh->GetMeshData();
   std::vector<void *> vertex_data_buffers = {mesh.VertexPosData.data(),
+                                             mesh.VertexNormalData.data(),
                                              mesh.VertexTexCoordData.data()};
   std::vector<u32 *> vertex_index_buffers = {
       mesh.VertexTriangleIndicies.PosIdx.data(),
+      mesh.VertexTriangleIndicies.NormalIdx.data(),
       mesh.VertexTriangleIndicies.TexCoordIdx.data()};
   auto vertex_count = mesh.VertexTriangleIndicies.PosIdx.size();
 

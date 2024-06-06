@@ -31,6 +31,7 @@ class Mat2 {
   }
 
   r32 *DataPtr() { return columns[0].DataPtr(); }
+  const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
 inline Mat2 operator*(const Mat2 &a, const Mat2 &b) { return a.Dot(b); }
@@ -69,6 +70,7 @@ class Mat3 {
   }
 
   r32 *DataPtr() { return columns[0].DataPtr(); }
+  const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
 inline Mat3 operator*(const Mat3 &a, const Mat3 &b) { return a.Dot(b); }
@@ -114,6 +116,7 @@ class Mat4 {
   }
 
   r32 *DataPtr() { return columns[0].DataPtr(); }
+  const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
 inline Mat4 operator*(const Mat4 &a, const Mat4 &b) { return a.Dot(b); }

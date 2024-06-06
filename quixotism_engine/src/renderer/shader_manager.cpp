@@ -19,6 +19,77 @@ static u32 GLShaderStageType(ShaderStageType stage) {
   }
 }
 
+i32 Shader::GetUniformLocation(const std::string &name) {
+  if (uniform_cache.contains(name)) {
+    return uniform_cache[name];
+  }
+
+  GLCall(i32 uniform_location = glGetUniformLocation(id, name.c_str()));
+  if (uniform_location == -1) {
+    auto Msg = std::string("Warning: Uniform ") + name +
+               std::string(" does not exist.");
+    DBG_PRINT(Msg.c_str());
+  } else {
+    uniform_cache[name] = uniform_location;
+  }
+  return uniform_location;
+}
+
+void Shader::SetUniform(const std::string &name, const i32 value) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniform1i(uniform, value));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Vec2 &value,
+                        const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniform2fv(uniform, count, value.DataPtr()));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Vec3 &value,
+                        const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniform3fv(uniform, count, value.DataPtr()));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Vec4 &value,
+                        const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniform4fv(uniform, count, value.DataPtr()));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Mat2 &value,
+                        const bool transpose, const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniformMatrix2fv(uniform, count, transpose, value.DataPtr()));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Mat3 &value,
+                        const bool transpose, const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniformMatrix3fv(uniform, count, transpose, value.DataPtr()));
+  }
+}
+
+void Shader::SetUniform(const std::string &name, const Mat4 &value,
+                        const bool transpose, const size_t count) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniformMatrix4fv(uniform, count, transpose, value.DataPtr()));
+  }
+}
+
 ShaderManager::GLStage::GLStage(ShaderStageType stage) : attached_shader{0} {
   GLCall(id = glCreateShader(GLShaderStageType(stage)));
 }
@@ -47,23 +118,10 @@ ShaderManager::GLStage::~GLStage() {
   }
 }
 
-ShaderManager::ShaderManager() {
-  for (u32 i = 1; i < ARRAY_SIZE; ++i) {
-    free_ids.push(i);
-  }
-  Shader def{};
-  shaders.fill(def);
-}
+ShaderManager::ShaderManager() {}
 
 ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
-  if (spec.empty() || free_ids.empty()) {
-    return INVALID_ID;
-  }
-
-  auto id = free_ids.front();
-  auto &shader = shaders[id];
-  assert(shader.id == Shader::INVALID_SHADER_ID);
-
+  Shader shader{};
   GLCall(shader.id = glCreateProgram());
   assert(shader.id != Shader::INVALID_SHADER_ID);
 
@@ -83,7 +141,7 @@ ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
       gl_stages.push_back(std::move(*gl_stage));
       (*gl_stage).attached_shader = shader.id;
     } else {
-       return INVALID_ID;
+      return INVALID_ID;
     }
   }
 
@@ -109,8 +167,10 @@ ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
     assert(false);
   }
 
-  guard.Disengage();
-  free_ids.pop();
+  auto id = this->Add(std::move(shader));
+  if (id) {
+    guard.Disengage();
+  }
   return id;
 }
 
@@ -145,20 +205,6 @@ std::optional<ShaderManager::GLStage> ShaderManager::CompileStage(
   }
 
   return gl_stage;
-}
-
-std::optional<Shader> ShaderManager::Get(const ShaderID id) const {
-  assert(id < shaders.size());
-  if (Exists(id)) {
-    return shaders[id];
-  } else {
-    return std::nullopt;
-  }
-}
-
-bool ShaderManager::Exists(const ShaderID id) const {
-  assert(id < ARRAY_SIZE);
-  return shaders[id].id != Shader::INVALID_SHADER_ID;
 }
 
 }  // namespace quixotism

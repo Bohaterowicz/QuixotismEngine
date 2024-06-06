@@ -102,8 +102,7 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   }
 
   renderer.ClearRenderTarget();
-  DrawText("Te, Tog, Hyello Text! Much to do porter, ying yang. jhon", -0.98,
-           0.8f, 0.4);
+  DrawText("Hello Text!", -0.98, 0.8f, 0.8);
   renderer.DrawStaticMeshes();
   renderer.DrawText();
 }

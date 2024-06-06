@@ -69,6 +69,7 @@ class Vec2 {
   Vec2& Normalize();
 
   r32* DataPtr() { return &e[0]; }
+  const r32* DataPtr() const { return &e[0]; }
 };
 
 inline Vec2 operator+(Vec2 a, Vec2 const& b) { return a += b; }
@@ -116,6 +117,7 @@ class IVec2 {
   r32 Dot(IVec2 const& other) const { return x * other.x + y * other.y; }
 
   i32* DataPtr() { return &e[0]; }
+  const i32* DataPtr() const { return &e[0]; }
 };
 
 inline IVec2 operator+(IVec2 a, IVec2 const& b) { return a += b; }
@@ -191,6 +193,7 @@ class Vec3 {
   Vec3& Normalize();
 
   r32* DataPtr() { return &e[0]; }
+  const r32* DataPtr() const { return &e[0]; }
 };
 
 inline Vec3 operator+(Vec3 a, Vec3 const& b) { return a += b; }
@@ -274,6 +277,7 @@ class Vec4 {
   Vec4& Normalize();
 
   r32* DataPtr() { return &e[0]; }
+  const r32* DataPtr() const { return &e[0]; }
 };
 
 inline Vec4 operator+(Vec4 a, Vec4 const& b) { return a += b; }

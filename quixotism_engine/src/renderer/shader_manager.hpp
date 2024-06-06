@@ -2,9 +2,14 @@
 #include <array>
 #include <optional>
 #include <queue>
+#include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "containers/bucket_array.hpp"
+#include "dbg_print.hpp"
+#include "math/math.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {
@@ -17,24 +22,41 @@ enum class ShaderStageType {
 using StageSpec = std::pair<ShaderStageType, std::string>;
 using ShaderStageSpec = std::vector<StageSpec>;
 
-struct Shader {
+class Shader {
+ public:
   static constexpr u32 INVALID_SHADER_ID = 0;
+  Shader() = default;
+
+  void SetUniform(const std::string &name, const i32 value);
+  void SetUniform(const std::string &name, const Vec2 &value,
+                  const size_t count = 1);
+  void SetUniform(const std::string &name, const Vec3 &value,
+                  const size_t count = 1);
+  void SetUniform(const std::string &name, const Vec4 &value,
+                  const size_t count = 1);
+  void SetUniform(const std::string &name, const Mat2 &value,
+                  const bool transpose = false, const size_t count = 1);
+  void SetUniform(const std::string &name, const Mat3 &value,
+                  const bool transpose = false, const size_t count = 1);
+  void SetUniform(const std::string &name, const Mat4 &value,
+                  const bool transpose = false, const size_t count = 1);
+
   u32 id;
+
+ private:
+  i32 GetUniformLocation(const std::string &name);
+  std::unordered_map<std::string, i32> uniform_cache;
 };
 
 using ShaderID = u32;
 
-class ShaderManager {
+class ShaderManager : public BucketArray<Shader> {
  public:
-  static constexpr size_t ARRAY_SIZE = 256;
-  static constexpr ShaderID INVALID_ID = 0;
   CLASS_DELETE_COPY(ShaderManager);
 
   ShaderManager();
 
   [[no_discard]] ShaderID CreateShader(const ShaderStageSpec &spec);
-  [[no_discard]] std::optional<Shader> Get(const ShaderID id) const;
-  [[no_discard]] bool Exists(const ShaderID id) const;
 
  private:
   struct GLStage {
@@ -49,9 +71,6 @@ class ShaderManager {
   };
 
   std::optional<GLStage> CompileStage(const StageSpec stage) const;
-
-  std::queue<ShaderID> free_ids;
-  std::array<Shader, ARRAY_SIZE> shaders;
 };
 
 }  // namespace quixotism

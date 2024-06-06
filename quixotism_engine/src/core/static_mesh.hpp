@@ -41,6 +41,7 @@ class StaticMesh {
 
  private:
   Mesh mesh;
+  
 };
 
 }  // namespace quixotism

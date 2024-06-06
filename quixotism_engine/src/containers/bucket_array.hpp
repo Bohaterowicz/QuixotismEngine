@@ -30,16 +30,16 @@ class BucketArray {
     return (result == free_ids.end());
   }
 
-  IdType Add(T&& entity) {
+  IdType Add(T&& element) {
     if (free_ids.empty()) {
       if (currently_used == BUCKET_SIZE) {
         return INVALID_ID;
       }
-      elements[currently_used] = std::move(entity);
+      elements[currently_used] = std::move(element);
       return currently_used++;
     } else {
       auto id = free_ids.front();
-      elements[id] = std::move(entity);
+      elements[id] = std::move(element);
       free_ids.erase(free_ids.cbegin());
       return id;
     }
