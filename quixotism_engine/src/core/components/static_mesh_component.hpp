@@ -12,6 +12,8 @@ class StaticMeshComponent : public Component {
   StaticMeshComponent(StaticMeshId id) : id(id) {}
   static ComponentType Type() { return ComponentType::STATIC_MESH; }
 
+  [[no_discard]] StaticMeshId GetStaticMeshId() const { return id; }
+
  private:
   StaticMeshId id;
 };

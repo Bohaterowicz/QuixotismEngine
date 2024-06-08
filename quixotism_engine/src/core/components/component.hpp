@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/transform.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {
@@ -18,6 +19,8 @@ class Component {
   Component() = default;
 
   static ComponentType Type() = delete;
+
+  Transform transform;
 };
 
 }  // namespace quixotism

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "core/static_mesh_manager.hpp"
+#include "core/transform.hpp"
 #include "gl_buffer_manager.hpp"
 #include "gl_sampler_manager.hpp"
 #include "gl_texture.hpp"
@@ -37,15 +38,18 @@ class QuixotismRenderer {
   void PushText(std::string&& text, Vec2 position, r32 scale);
   void DrawText();
 
-  void DrawStaticMeshes();
+  void PrepareDrawStaticMeshes();
+  void DrawStaticMesh(const StaticMeshId id, const Transform& transform);
 
   void MakeDrawableStaticMesh(StaticMeshId id);
+
+  void DrawXYZAxesOverlay();
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;
 
   VertexArrayID vao_id = 0, text_vao = 0;
-  GLBufferID vbo = 0, ebo = 0, vbo2, ebo2, text_vbo_id = 0;
+  GLBufferID text_vbo_id = 0;
   ShaderID shader_id, shader_id2, font_shader_id;
   TextureID texture_id;
   SamplerID sampler_id;

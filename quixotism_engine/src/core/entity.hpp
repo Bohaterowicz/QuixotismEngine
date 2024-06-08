@@ -3,6 +3,7 @@
 #include "core/components/component.hpp"
 #include "core/components/component_manager.hpp"
 #include "quixotism_c.hpp"
+#include "transform.hpp"
 
 namespace quixotism {
 
@@ -21,14 +22,16 @@ class Entity {
   }
 
   template <class COMPONENT_TYPE>
-  COMPONENT_TYPE& GetComponent() const {
+  COMPONENT_TYPE* GetComponent() const {
     auto id = components[COMPONENT_TYPE::Type()];
     if (id != ComponentManager::INVALID_ID) {
       return ComponentManager::GetInstance().GetComponent<COMPONENT_TYPE>(id);
     } else {
-      assert(0);
+      return nullptr;
     }
   }
+
+  Transform transform;
 
  private:
   ComponentId components[COMPONENT_COUNT] = {};

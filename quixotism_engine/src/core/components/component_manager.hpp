@@ -1,16 +1,13 @@
 #pragma once
 
-#include "core/components/camera.hpp"
-#include "core/components/static_mesh.hpp"
-#include "core/components/transform.hpp"
+#include "core/components/camera_component.hpp"
+#include "core/components/static_mesh_component.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {
 
 using ComponentId = size_t;
 
-template <class TYPE>
-constexpr bool IsTransformComponent = std::is_same_v<TYPE, TransformComponent>;
 template <class TYPE>
 constexpr bool IsCameraComponent = std::is_same_v<TYPE, CameraComponent>;
 template <class TYPE>
@@ -30,9 +27,7 @@ class ComponentManager {
 
   template <class TYPE>
   ComponentId Add(TYPE& component) {
-    if constexpr (IsTransformComponent<TYPE>) {
-      return Add(transform_components, transform_free_ids, component);
-    } else if constexpr (IsCameraComponent<TYPE>) {
+    if constexpr (IsCameraComponent<TYPE>) {
       return Add(camera_components, camera_free_ids, component);
     } else if constexpr (IsStaticMeshComponent<TYPE>) {
       return Add(static_mesh_components, static_mesh_free_ids, component);
@@ -42,27 +37,22 @@ class ComponentManager {
   }
 
   template <class TYPE>
-  TYPE& GetComponent(ComponentId id) {
-    if constexpr (IsTransformComponent<TYPE>) {
-      return transform_components[id];
-    } else if constexpr (IsCameraComponent<TYPE>) {
-      return camera_components[id];
+  TYPE* GetComponent(ComponentId id) {
+    if constexpr (IsCameraComponent<TYPE>) {
+      return &camera_components[id];
+    } else if constexpr (IsStaticMeshComponent<TYPE>) {
+      return &static_mesh_components[id];
     } else {
-      assert(0);
+      return nullptr;
     }
   }
 
  private:
   ComponentManager() {
     for (u32 i = 1; i < ARRAY_SIZE; ++i) {
-      transform_free_ids.push(i);
       camera_free_ids.push(i);
+      static_mesh_free_ids.push(i);
     }
-    TransformComponent transform{};
-    transform_components.fill(transform);
-
-    CameraComponent cam{};
-    camera_components.fill(cam);
   }
 
   template <class T>
@@ -77,9 +67,6 @@ class ComponentManager {
     free_ids.pop();
     return id;
   }
-
-  std::queue<ComponentId> transform_free_ids;
-  std::array<TransformComponent, ARRAY_SIZE> transform_components;
 
   std::queue<ComponentId> camera_free_ids;
   std::array<CameraComponent, ARRAY_SIZE> camera_components;

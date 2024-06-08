@@ -28,6 +28,7 @@ class Shader {
   Shader() = default;
 
   void SetUniform(const std::string &name, const i32 value);
+  void SetUniform(const std::string &name, const r32 value);
   void SetUniform(const std::string &name, const Vec2 &value,
                   const size_t count = 1);
   void SetUniform(const std::string &name, const Vec3 &value,

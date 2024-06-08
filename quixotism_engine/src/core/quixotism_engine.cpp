@@ -13,18 +13,14 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   window_dim = dim;
 
   Entity camera;
-  TransformComponent transform;
   CameraComponent cam_com{
       DegToRad(45.0),
       static_cast<r32>(window_dim.width) / static_cast<r32>(window_dim.height),
       0.01f, 1000.0f};
-  camera.AddComponent(transform);
   camera.AddComponent(cam_com);
 
   camera_id = entity_mgr.Add(std::move(camera));
-
-  auto& cam_transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
-  cam_transform.SetPosition(Vec3{-150, 0, 50});
+  entity_mgr.Get(camera_id)->transform.SetPosition(Vec3{-150, 0, 50});
 
   InitTextFonts();
 
@@ -37,17 +33,17 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   QuixotismRenderer::GetRenderer().MakeDrawableStaticMesh(mesh_id);
 
   Entity box;
-  TransformComponent box_transform;
   StaticMeshComponent box_sm{mesh_id};
-  box.AddComponent(box_transform);
   box.AddComponent(box_sm);
   box_id = entity_mgr.Add(std::move(box));
+  auto box_id2 = entity_mgr.Clone(box_id);
+  entity_mgr.Get(box_id2)->transform.Move(Vec3{100, 100, 100});
 }
 
 void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
-  auto& transform = entity_mgr.GetComponent<TransformComponent>(camera_id);
+  auto& transform = entity_mgr.Get(camera_id)->transform;
 
   auto speed = 50.0F;  // m/s
   auto rotation_speed = 1.0F;
@@ -103,8 +99,19 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
 
   renderer.ClearRenderTarget();
   DrawText("Hello Text!", -0.98, 0.8f, 0.8);
-  renderer.DrawStaticMeshes();
+  DrawEntities();
   renderer.DrawText();
+  renderer.DrawXYZAxesOverlay();
+}
+
+void QuixotismEngine::DrawEntities() {
+  QuixotismRenderer::GetRenderer().PrepareDrawStaticMeshes();
+  for (auto& entity : entity_mgr) {
+    auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
+    if (!sm_comp) continue;
+    QuixotismRenderer::GetRenderer().DrawStaticMesh(sm_comp->GetStaticMeshId(),
+                                                    entity.transform);
+  }
 }
 
 void QuixotismEngine::InitTextFonts() {

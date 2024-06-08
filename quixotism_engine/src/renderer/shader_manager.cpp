@@ -42,6 +42,13 @@ void Shader::SetUniform(const std::string &name, const i32 value) {
   }
 }
 
+void Shader::SetUniform(const std::string &name, const r32 value) {
+  auto uniform = GetUniformLocation(name);
+  if (uniform != -1) {
+    GLCall(glUniform1f(uniform, value));
+  }
+}
+
 void Shader::SetUniform(const std::string &name, const Vec2 &value,
                         const size_t count) {
   auto uniform = GetUniformLocation(name);

@@ -21,7 +21,7 @@ QuixotismRenderer::QuixotismRenderer() {
   GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
   GLCall(glCullFace(GL_BACK));
 
-  GLCall(glClearColor(1.0F, 0.0F, 0.0F, 1.0F));
+  GLCall(glClearColor(0.4F, 0.4F, 0.4F, 1.0F));
   GLCall(glClearDepth(1.0F));
   GLCall(glClearStencil(0));
   DBG_PRINT("Specified clear colors");
@@ -249,42 +249,52 @@ void QuixotismRenderer::DrawText() {
   GLCall(glDepthMask(GL_TRUE));
 }
 
-void QuixotismRenderer::DrawStaticMeshes() {
+void QuixotismRenderer::PrepareDrawStaticMeshes() {
   auto &engine = QuixotismEngine::GetEngine();
 
   auto shader = shader_mgr.Get(shader_id2);
   if (!shader) {
     assert(0);
   }
-  glUseProgram((*shader).id);
+  GLCall(glUseProgram((*shader).id));
 
   auto camera_id = engine.GetCamera();
-  auto &camera = engine.entity_mgr.GetComponent<CameraComponent>(camera_id);
-  auto &transform =
-      engine.entity_mgr.GetComponent<TransformComponent>(camera_id);
-  auto view = transform.GetOrientationMatrix();
-  auto proj = camera.GetProjectionMatrix();
+  auto *camera = engine.entity_mgr.GetComponent<CameraComponent>(camera_id);
+  auto &transform = engine.entity_mgr.Get(camera_id)->transform;
+  auto view = transform.GetTransformMatrix();
+  auto proj = camera->GetProjectionMatrix();
   auto light_pos = Vec3{100, 100, 0};
 
   shader->SetUniform("view", view);
   shader->SetUniform("projection", proj);
   shader->SetUniform("view_pos", transform.position);
   shader->SetUniform("light_pos", light_pos);
+}
 
-  for (auto &static_mesh : engine.static_mesh_mgr) {
-    auto vao = vertex_array_mgr.Get(static_mesh.vao_id);
-    auto vbo = gl_buffer_mgr.Get(static_mesh.vbo_id);
-    auto ebo = gl_buffer_mgr.Get(static_mesh.ebo_id);
-    if (!vbo || !ebo || !vao) {
-      assert(0);
-    }
-    BindVertexArray(*vao);
-    BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
-    GLCall(glDrawElements(
-        GL_TRIANGLES,
-        static_mesh.GetMeshData().VertexTriangleIndicies.PosIdx.size(),
-        GL_UNSIGNED_INT, 0));
+void QuixotismRenderer::DrawStaticMesh(const StaticMeshId id,
+                                       const Transform &transform) {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto *sm = engine.static_mesh_mgr.Get(id);
+  assert(sm);
+
+  auto shader = shader_mgr.Get(shader_id2);
+  if (!shader) {
+    assert(0);
   }
+
+  shader->SetUniform("model", transform.GetTransformMatrix());
+
+  auto vao = vertex_array_mgr.Get(sm->vao_id);
+  auto vbo = gl_buffer_mgr.Get(sm->vbo_id);
+  auto ebo = gl_buffer_mgr.Get(sm->ebo_id);
+  if (!vbo || !ebo || !vao) {
+    assert(0);
+  }
+  BindVertexArray(*vao);
+  BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
+  GLCall(glDrawElements(GL_TRIANGLES,
+                        sm->GetMeshData().VertexTriangleIndicies.PosIdx.size(),
+                        GL_UNSIGNED_INT, 0));
 }
 
 void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
@@ -329,6 +339,75 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
   } else {
     assert(0);
   }
+}
+
+void QuixotismRenderer::DrawXYZAxesOverlay() {
+  static GLBufferID axes_vbo_id = GLBuffer::INVALID_BUFFER_ID;
+  static VertexArrayID axes_vao_id = VertexArray::INVALID_VAO_ID;
+  static ShaderID axes_shader_id = Shader::INVALID_SHADER_ID;
+  static std::array<Vec3, 6> axes_verts{Vec3{0, 0, 0}, Vec3{1, 0, 0},
+                                        Vec3{0, 0, 0}, Vec3{0, 1, 0},
+                                        Vec3{0, 0, 0}, Vec3{0, 0, 1}};
+
+  if (!axes_vbo_id) {
+    ShaderStageSpec shader_spec;
+    shader_spec.emplace_back(
+        ShaderStageType::VERTEX,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.vert");
+    shader_spec.emplace_back(
+        ShaderStageType::FRAGMENT,
+        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
+    axes_shader_id = shader_mgr.CreateShader(shader_spec);
+
+    if (auto id = gl_buffer_mgr.Create()) {
+      axes_vbo_id = id;
+    } else {
+      assert(0);
+    }
+    auto vbo = gl_buffer_mgr.Get(axes_vbo_id);
+    GLBufferData(*vbo, axes_verts.data(), sizeof(axes_verts),
+                 BufferDataMode::STATIC_DRAW);
+    VertexBufferLayout vao_layout;
+    vao_layout.AddLayoutElementF(3, false, 0);
+    if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
+      axes_vao_id = *vao_id;
+    } else {
+      assert(0);
+    }
+  }
+
+  assert(axes_vao_id && axes_vbo_id && axes_shader_id);
+
+  auto &engine = QuixotismEngine::GetEngine();
+  auto window_dim = engine.GetWindowDim();
+
+  auto vao = vertex_array_mgr.Get(axes_vao_id);
+  auto vbo = gl_buffer_mgr.Get(axes_vbo_id);
+  if (!vao || !vbo) {
+    assert(0);
+  }
+
+  BindVertexBufferToVertexArray(*vao, *vbo, 0);
+  BindVertexArray(*vao);
+
+  auto camera_id = engine.GetCamera();
+  auto *camera = engine.entity_mgr.GetComponent<CameraComponent>(camera_id);
+
+  auto *shader = shader_mgr.Get(axes_shader_id);
+  assert(shader);
+  GLCall(glUseProgram((*shader).id));
+  auto &transform = engine.entity_mgr.Get(engine.GetCamera())->transform;
+  shader->SetUniform("view", transform.GetRotationMatrix());
+  shader->SetUniform("projection", camera->GetProjectionMatrix());
+  shader->SetUniform("scale", 0.05f);
+
+  GLCall(glLineWidth(5.0));
+  shader->SetUniform("Color", Vec3{1, 0, 0});
+  GLCall(glDrawArrays(GL_LINES, 0, 2));
+  shader->SetUniform("Color", Vec3{0, 1, 0});
+  GLCall(glDrawArrays(GL_LINES, 2, 2));
+  shader->SetUniform("Color", Vec3{0, 0, 1});
+  GLCall(glDrawArrays(GL_LINES, 4, 2));
 }
 
 }  // namespace quixotism

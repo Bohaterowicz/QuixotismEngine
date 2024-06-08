@@ -34,6 +34,8 @@ class QuixotismEngine {
 
   void DrawText(std::string&& text, float x, float y, r32 scale);
 
+  void DrawEntities();
+
   Font font;
 
   PlatformServices services;

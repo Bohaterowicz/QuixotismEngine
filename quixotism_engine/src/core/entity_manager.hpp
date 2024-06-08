@@ -16,7 +16,7 @@ class EntityManager : public BucketArray<Entity> {
   EntityManager() = default;
 
   template <class COMPONENT_TYPE>
-  [[no_discard]] COMPONENT_TYPE& GetComponent(EntityId id) const {
+  [[no_discard]] COMPONENT_TYPE *GetComponent(EntityId id) const {
     return elements[id].GetComponent<COMPONENT_TYPE>();
   }
 
