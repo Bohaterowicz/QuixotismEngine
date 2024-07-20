@@ -7,8 +7,10 @@
 #include "core/material_manager.hpp"
 #include "core/platform_services.hpp"
 #include "core/static_mesh_manager.hpp"
+#include "core/terminal.hpp"
 #include "core/texture_manager.hpp"
 #include "fonts/font.hpp"
+
 
 namespace quixotism {
 
@@ -49,6 +51,8 @@ class QuixotismEngine {
   u64 tex_id;
 
   bool show_bb = false;
+  u32 show_terminal = 0;
+  Terminal terminal;
 
  private:
   QuixotismEngine() {}

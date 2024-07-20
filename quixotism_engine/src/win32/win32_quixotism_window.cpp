@@ -33,10 +33,11 @@ static bool Win32SetPixelFormat(HWND window) {
   return false;
 }
 
-static void Win32ProcessKeyboardInput(ButtonState &new_state, bool is_down) {
+static void Win32ProcessKeyboardInput(ButtonState &new_state, bool is_down,
+                                      bool transition = true) {
+  new_state.half_transition_count = transition ? 1 : 0;
   if (new_state.ended_down != is_down) {
     new_state.ended_down = is_down;
-    new_state.half_transition_count++;
   }
 }
 
@@ -73,11 +74,19 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
         bool alt_key_was_down =
             ((message.lParam & (1 << ALT_KEY_IS_DOWN_SHIFT)) != 0);
 
+        if (vk_code == VK_ESCAPE) {
+          Shutdown();
+        }
+        if (vk_code == VK_F4 && alt_key_was_down) {
+          Shutdown();
+        }
+
         // If the key was down before, but now isnt, that means that the key got
         // released, and the other way around This if statment pervents us from
         // being flooded by key-repeat messages (meaning that a key is being
         // held down)
-        if (was_down != is_down) {
+        bool transition = was_down != is_down;
+        if (transition) {
           if (vk_code == 'C') {
             if (is_down) {
               DBG_PRINT("TOGGLING MOUSE VISIBILITY");
@@ -110,15 +119,12 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
           if (vk_code == 'A') {
             Win32ProcessKeyboardInput(input.left, is_down);
           }
-          if (vk_code == 'B') {
-            Win32ProcessKeyboardInput(input.bb, is_down);
-          }
-          if (vk_code == VK_ESCAPE) {
-            Shutdown();
-          }
-          if (vk_code == VK_F4 && alt_key_was_down) {
-            Shutdown();
-          }
+        }
+        if (vk_code == 'B') {
+          Win32ProcessKeyboardInput(input.bb, is_down, transition);
+        }
+        if (vk_code == 'T') {
+          Win32ProcessKeyboardInput(input.tt, is_down, transition);
         }
       } break;
       default: {

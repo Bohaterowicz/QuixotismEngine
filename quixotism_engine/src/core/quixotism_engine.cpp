@@ -66,6 +66,8 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   StaticMeshComponent sphere_sm{s_mesh_id, mat1_id};
   sphere.AddComponent(sphere_sm);
   entity_mgr.Add(std::move(sphere));
+
+  terminal.Init();
 }
 
 void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
@@ -125,15 +127,29 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
     }
   }
 
-  if (input.bb.ended_down) {
+  if (input.bb.half_transition_count && input.bb.ended_down) {
+    input.bb.half_transition_count = 0;
     show_bb = !show_bb;
   }
+
+  if (input.tt.half_transition_count && input.tt.ended_down) {
+    input.tt.half_transition_count = 0;
+    DBG_PRINT("Toggle terminal...");
+    terminal.ToggleShow();
+  }
+
+  terminal.Update(delta_t);
 
   renderer.ClearRenderTarget();
   DrawText("Hello Text!", -0.98, 0.8f, 0.8);
   DrawEntities();
   renderer.DrawText();
   renderer.DrawXYZAxesOverlay();
+
+  if (terminal.IsVisible()) {
+    renderer.DrawTerminal(terminal.smid, terminal.matid,
+                          terminal.DrawTransform());
+  }
 }
 
 void QuixotismEngine::DrawEntities() {

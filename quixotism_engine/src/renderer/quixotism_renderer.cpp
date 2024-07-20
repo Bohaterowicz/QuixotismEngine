@@ -76,6 +76,15 @@ QuixotismRenderer::QuixotismRenderer() {
       "D:/QuixotismEngine/quixotism_engine/data/shaders/model.frag");
   shader_mgr.CreateShader("model", shader_spec);
 
+  shader_spec = {};
+  shader_spec.emplace_back(ShaderStageType::VERTEX,
+                           "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                           "basic_v3_model_only.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/solid_color.frag");
+  shader_mgr.CreateShader("solid_color", shader_spec);
+
   CompileTextShader();
   auto sampler = CreateSampler();
   sampler_id = sampler_mgr.Add(std::move(sampler));
@@ -294,6 +303,30 @@ void QuixotismRenderer::PrepareDrawStaticMeshes() {
   shader->SetUniform("light_pos", light_pos);
 }
 
+void QuixotismRenderer::DrawTerminal(const StaticMeshId sm_id,
+                                     const MaterialID material,
+                                     const Transform &transform) {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto *sm = engine.static_mesh_mgr.Get(sm_id);
+  auto vao = vertex_array_mgr.Get(sm->vao_id);
+  auto vbo = gl_buffer_mgr.Get(sm->vbo_id);
+  if (!vao || !vbo) {
+    Assert(0);
+  }
+
+  BindVertexBufferToVertexArray(*vao, *vbo, 0);
+  BindVertexArray(*vao);
+  auto mat = engine.material_mgr.Get(material);
+  auto *shader = shader_mgr.Get(mat->GetShaderId());
+  Assert(shader);
+  GLCall(glUseProgram((*shader).id));
+  shader->SetUniform("model", transform.GetOffsetMatrix());
+  shader->SetUniform("Color", Vec4{0.2, 0.2, 0.2, 0.8});
+  GLCall(glDepthMask(GL_FALSE));
+  GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+  GLCall(glDepthMask(GL_TRUE));
+}
+
 void QuixotismRenderer::DrawBoundingBox(const StaticMeshId sm_id,
                                         const Transform &transform) {
   static VertexArrayID bb_vao_id = VertexArray::INVALID_VAO_ID;
@@ -457,6 +490,37 @@ CreateBoundingBoxVertexBuffer(const BoundingBox &bb) {
   *dst++ = bb.high.z;
 
   return {std::move(buffer), size};
+}
+
+// THIS IS STUPID...
+void QuixotismRenderer::MakeDrawableStaticMesh2(StaticMeshId id,
+                                                VertexArrayID vao_id) {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto sm_mesh = engine.static_mesh_mgr.Get(id);
+  if (!sm_mesh) return;
+
+  auto vbo_id = gl_buffer_mgr.Create();
+  if (vbo_id) {
+    sm_mesh->vbo_id = vbo_id;
+  } else {
+    Assert(0);
+  }
+
+  auto vao = *vertex_array_mgr.Get(vao_id);
+  sm_mesh->vao_id = vao_id;
+
+  auto &mesh = sm_mesh->GetMeshData();
+  std::vector<void *> vertex_data_buffers = {mesh.VertexPosData.data()};
+
+  auto vbo_buf = gl_buffer_mgr.Get(sm_mesh->vbo_id);
+
+  if (vbo_buf) {
+    GLBufferData(*vbo_buf, mesh.VertexPosData.data(),
+                 mesh.VertexPosData.size() * 3 * sizeof(r32),
+                 BufferDataMode::STATIC_DRAW);
+  } else {
+    Assert(0);
+  }
 }
 
 void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {

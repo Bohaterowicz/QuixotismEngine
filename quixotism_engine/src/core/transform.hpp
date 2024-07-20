@@ -26,6 +26,12 @@ class Transform {
     return Normalize(Cross(right, forward));
   }
 
+  Mat4 GetOffsetMatrix() const {
+    Mat4 pos{1.0};
+    pos[3] = Vec4{-position, 1.0};
+    return pos;
+  }
+
   Mat4 GetTransformMatrix() const {
     Mat4 pos{1.0};
     pos[3] = Vec4{-position, 1.0};

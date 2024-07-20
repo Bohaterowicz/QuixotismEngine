@@ -42,10 +42,13 @@ class QuixotismRenderer {
                       const Transform& transform);
 
   void MakeDrawableStaticMesh(StaticMeshId id);
+  void MakeDrawableStaticMesh2(StaticMeshId id, VertexArrayID vao_id);
 
   void DrawXYZAxesOverlay();
 
   void DrawBoundingBox(const StaticMeshId sm_id, const Transform& transform);
+  void DrawTerminal(const StaticMeshId sm_id, const MaterialID mat_id,
+                    const Transform& transform);
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;
