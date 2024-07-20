@@ -15,7 +15,7 @@ static u32 GLShaderStageType(ShaderStageType stage) {
     case ShaderStageType::FRAGMENT:
       return GL_FRAGMENT_SHADER;
     default:
-      assert(0);
+      Assert(0);
   }
 }
 
@@ -127,10 +127,15 @@ ShaderManager::GLStage::~GLStage() {
 
 ShaderManager::ShaderManager() {}
 
-ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
-  Shader shader{};
+ShaderID ShaderManager::CreateShader(const std::string &name,
+                                     const ShaderStageSpec &spec) {
+  if (shader_name_map.find(name) != shader_name_map.end()) {
+    DBG_PRINT("Shader with name '" + name + "' already exists...");
+    return Shader::INVALID_SHADER_ID;
+  }
+  Shader shader{name};
   GLCall(shader.id = glCreateProgram());
-  assert(shader.id != Shader::INVALID_SHADER_ID);
+  Assert(shader.id != Shader::INVALID_SHADER_ID);
 
   // IMPORTANT:We have created a shader program object succesully, if for some
   // reason we fail during compilation/attachment/verification we are gonna exit
@@ -159,24 +164,25 @@ ShaderID ShaderManager::CreateShader(const ShaderStageSpec &spec) {
   if (!success) {
     i32 log_size = 0, actual_size = 0;
     GLCall(glGetProgramiv(shader.id, GL_INFO_LOG_LENGTH, &log_size));
-    assert(log_size);
+    Assert(log_size);
     std::string error_log;
     error_log.resize(log_size);
     GLCall(glGetProgramInfoLog(shader.id, log_size, &actual_size,
                                error_log.data()));
-    assert(actual_size <= log_size);
+    Assert(actual_size <= log_size);
     return INVALID_ID;
   }
 
   GLCall(glValidateProgram(shader.id));
   GLCall(glGetProgramiv(shader.id, GL_VALIDATE_STATUS, &success));
   if (!success) {
-    assert(false);
+    Assert(false);
   }
 
   auto id = this->Add(std::move(shader));
   if (id) {
     guard.Disengage();
+    shader_name_map[name] = id;
   }
   return id;
 }
@@ -202,16 +208,24 @@ std::optional<ShaderManager::GLStage> ShaderManager::CompileStage(
   if (!success) {
     i32 log_size = 0, actual_size = 0;
     GLCall(glGetShaderiv(gl_stage.id, GL_INFO_LOG_LENGTH, &log_size));
-    assert(log_size);
+    Assert(log_size);
     std::string error_log;
     error_log.resize(log_size);
     GLCall(glGetShaderInfoLog(gl_stage.id, log_size, &actual_size,
                               error_log.data()));
-    assert(actual_size <= log_size);
+    Assert(actual_size <= log_size);
     return std::nullopt;
   }
 
   return gl_stage;
+}
+
+ShaderID ShaderManager::GetByName(const std::string &name) {
+  if (shader_name_map.find(name) == shader_name_map.end()) {
+    return Shader::INVALID_SHADER_ID;
+  } else {
+    return shader_name_map[name];
+  }
 }
 
 }  // namespace quixotism

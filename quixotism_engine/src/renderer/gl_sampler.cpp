@@ -17,4 +17,16 @@ GLSampler CreateSampler() {
   return sampler;
 }
 
+GLSampler CreateSampler2() {
+  u32 id;
+  GLCall(glCreateSamplers(1, &id));
+  GLSampler sampler{id};
+  GLCall(glSamplerParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT));
+  GLCall(glSamplerParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT));
+  GLCall(
+      glSamplerParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+  GLCall(glSamplerParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+  return sampler;
+}
+
 }  // namespace quixotism

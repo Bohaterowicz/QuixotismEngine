@@ -169,7 +169,7 @@ LRESULT CALLBACK Win32QuixotismEngineWindowProc(HWND window_handle,
     case WM_SYSKEYUP:
     case WM_KEYDOWN:
     case WM_KEYUP: {
-      assert(!"Keyboard event came from wrong dispatch......");
+      Assert(!"Keyboard event came from wrong dispatch......");
     } break;
     default: {
       result = DefWindowProcA(window_handle, message, wparam, lparam);

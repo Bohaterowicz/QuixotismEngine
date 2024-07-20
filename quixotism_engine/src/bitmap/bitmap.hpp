@@ -26,7 +26,7 @@ class Bitmap {
 
  public:
   Bitmap() : width{0}, height{0}, format{BitmapFormat::UNSPECIFIED} {}
-  explicit Bitmap(i32 _width, i32 _height, BitmapFormat _format);
+  explicit Bitmap(u32 _width, u32 _height, BitmapFormat _format);
 
   Bitmap(const Bitmap &) = delete;
   Bitmap &operator=(const Bitmap &) = delete;
@@ -41,12 +41,12 @@ class Bitmap {
   u8 *GetBitmapWritePtr() { return data.get(); }
 
   std::pair<i32, i32> GetDim() const { return {width, height}; }
-  i32 GetWidth() const { return width; }
-  i32 GetHeight() const { return height; }
+  u32 GetWidth() const { return width; }
+  u32 GetHeight() const { return height; }
 
  private:
-  i32 width;
-  i32 height;
+  u32 width;
+  u32 height;
   BitmapFormat format;
   std::unique_ptr<u8[]> data;
 };

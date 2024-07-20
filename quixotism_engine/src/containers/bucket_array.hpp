@@ -24,7 +24,7 @@ class BucketArray {
   }
 
   bool Exists(const IdType id) const {
-    assert(id < BUCKET_SIZE);
+    Assert(id < BUCKET_SIZE);
     if (id == INVALID_ID || id >= currently_used) return false;
     auto result = std::find(free_ids.begin(), free_ids.end(), id);
     return (result == free_ids.end());

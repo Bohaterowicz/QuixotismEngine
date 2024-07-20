@@ -11,17 +11,17 @@ GLBufferID GLBufferManager::Create() {
   }
 
   auto id = free_ids.front();
-  assert(buffer_array[id].id == GLBuffer::INVALID_BUFFER_ID);
+  Assert(buffer_array[id].id == GLBuffer::INVALID_BUFFER_ID);
 
   GLCall(glCreateBuffers(1, &buffer_array[id].id));
-  assert(buffer_array[id].id != GLBuffer::INVALID_BUFFER_ID);
+  Assert(buffer_array[id].id != GLBuffer::INVALID_BUFFER_ID);
 
   free_ids.pop();
   return id;
 }
 
 std::optional<GLBuffer> GLBufferManager::Get(GLBufferID id) const {
-  assert(id < buffer_array.size());
+  Assert(id < buffer_array.size());
   if (Exists(id)) {
     return buffer_array[id];
   } else {
@@ -30,7 +30,7 @@ std::optional<GLBuffer> GLBufferManager::Get(GLBufferID id) const {
 }
 
 bool GLBufferManager::Exists(const GLBufferID id) const {
-  assert(id < ARRAY_SIZE);
+  Assert(id < ARRAY_SIZE);
   return buffer_array[id].id != GLBuffer::INVALID_BUFFER_ID;
 }
 

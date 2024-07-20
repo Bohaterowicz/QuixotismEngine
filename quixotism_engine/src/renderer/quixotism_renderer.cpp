@@ -33,7 +33,7 @@ QuixotismRenderer::QuixotismRenderer() {
   if (auto new_vao = vertex_array_mgr.Create(layout)) {
     vao_id = *new_vao;
   } else {
-    assert(0);
+    Assert(0);
   }
 
   ShaderStageSpec shader_spec;
@@ -43,7 +43,7 @@ QuixotismRenderer::QuixotismRenderer() {
   shader_spec.emplace_back(
       ShaderStageType::FRAGMENT,
       "D:/QuixotismEngine/quixotism_engine/data/shaders/basic.frag");
-  shader_id = shader_mgr.CreateShader(shader_spec);
+  shader_id = shader_mgr.CreateShader("basic", shader_spec);
 
   shader_spec = {};
   shader_spec.emplace_back(
@@ -52,14 +52,15 @@ QuixotismRenderer::QuixotismRenderer() {
   shader_spec.emplace_back(
       ShaderStageType::FRAGMENT,
       "D:/QuixotismEngine/quixotism_engine/data/shaders/model.frag");
-  shader_id2 = shader_mgr.CreateShader(shader_spec);
+  shader_mgr.CreateShader("model", shader_spec);
 
   CompileTextShader();
   auto sampler = CreateSampler();
   sampler_id = sampler_mgr.Add(std::move(sampler));
+  sampler_id2 = sampler_mgr.Add(CreateSampler2());
   auto &bitmap = QuixotismEngine::GetEngine().font.GetBitmap();
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  auto font_texture = CreateTexture(bitmap);
+  auto font_texture = CreateTexture(bitmap, true);
   glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
   texture_id = texture_mgr.Add(std::move(font_texture));
@@ -79,7 +80,7 @@ void QuixotismRenderer::CompileTextShader() {
   ShaderStageSpec shader_spec;
   shader_spec.emplace_back(ShaderStageType::VERTEX, vertex_source_path);
   shader_spec.emplace_back(ShaderStageType::FRAGMENT, fragment_source_path);
-  font_shader_id = shader_mgr.CreateShader(shader_spec);
+  font_shader_id = shader_mgr.CreateShader("font_basic", shader_spec);
 }
 
 void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale) {
@@ -123,7 +124,7 @@ void QuixotismRenderer::DrawText() {
     cached_text_vert_buffer_size = buffer_size;
   }
 
-  assert(cached_text_vert_buffer &&
+  Assert(cached_text_vert_buffer &&
          cached_text_vert_buffer_size >= required_buffer_size);
 
   // now we fill the vertex data buffer
@@ -199,7 +200,7 @@ void QuixotismRenderer::DrawText() {
     if (auto id = gl_buffer_mgr.Create()) {
       text_vbo_id = id;
     } else {
-      assert(0);
+      Assert(0);
     }
   }
 
@@ -211,13 +212,13 @@ void QuixotismRenderer::DrawText() {
     if (auto vao_id = vertex_array_mgr.Create(font_vao_layout)) {
       text_vao = *vao_id;
     } else {
-      assert(0);
+      Assert(0);
     }
   }
 
   auto vbo = gl_buffer_mgr.Get(text_vbo_id);
   if (!vbo) {
-    assert(0);
+    Assert(0);
   }
   // send vert data to gpu
   GLBufferData(*vbo, cached_text_vert_buffer.get(),
@@ -226,14 +227,14 @@ void QuixotismRenderer::DrawText() {
   // bind vert buffer
   auto vao = vertex_array_mgr.Get(text_vao);
   if (!vao) {
-    assert(0);
+    Assert(0);
   }
 
   BindVertexBufferToVertexArray(*vao, *vbo, 0);
   BindVertexArray(*vao);
   // setup shader
   auto *font_shader = shader_mgr.Get(font_shader_id);
-  assert(font_shader);
+  Assert(font_shader);
   GLCall(glUseProgram((*font_shader).id));
   auto *font_texture = texture_mgr.Get(texture_id);
   font_texture->BindUnit(0);
@@ -252,9 +253,9 @@ void QuixotismRenderer::DrawText() {
 void QuixotismRenderer::PrepareDrawStaticMeshes() {
   auto &engine = QuixotismEngine::GetEngine();
 
-  auto shader = shader_mgr.Get(shader_id2);
+  auto shader = shader_mgr.Get(shader_mgr.GetByName("model"));
   if (!shader) {
-    assert(0);
+    Assert(0);
   }
   GLCall(glUseProgram((*shader).id));
 
@@ -271,16 +272,24 @@ void QuixotismRenderer::PrepareDrawStaticMeshes() {
   shader->SetUniform("light_pos", light_pos);
 }
 
-void QuixotismRenderer::DrawStaticMesh(const StaticMeshId id,
+void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
+                                       const MaterialID mat_id,
                                        const Transform &transform) {
   auto &engine = QuixotismEngine::GetEngine();
-  auto *sm = engine.static_mesh_mgr.Get(id);
-  assert(sm);
+  auto *sm = engine.static_mesh_mgr.Get(sm_id);
+  auto *mat = engine.material_mgr.Get(mat_id);
+  Assert(sm && mat);
 
-  auto shader = shader_mgr.Get(shader_id2);
+  auto shader = shader_mgr.Get(mat->GetShaderId());
   if (!shader) {
-    assert(0);
+    Assert(0);
   }
+
+  auto diffuse_tex = engine.texture_mgr.Get(mat->diffuse);
+  diffuse_tex->glid.BindUnit(0);
+  auto *sampler = sampler_mgr.Get(sampler_id2);
+  shader->SetUniform("diffuse_tex", 0);
+  GLCall(glBindSampler(0, sampler->Id()));
 
   shader->SetUniform("model", transform.GetTransformMatrix());
 
@@ -288,7 +297,7 @@ void QuixotismRenderer::DrawStaticMesh(const StaticMeshId id,
   auto vbo = gl_buffer_mgr.Get(sm->vbo_id);
   auto ebo = gl_buffer_mgr.Get(sm->ebo_id);
   if (!vbo || !ebo || !vao) {
-    assert(0);
+    Assert(0);
   }
   BindVertexArray(*vao);
   BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
@@ -308,7 +317,7 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
     sm_mesh->vbo_id = vbo_id;
     sm_mesh->ebo_id = ebo_id;
   } else {
-    assert(0);
+    Assert(0);
   }
 
   auto vao = *vertex_array_mgr.Get(vao_id);
@@ -337,7 +346,7 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
     GLBufferData(*ebo_buf, index_buffer.get(), index_buffer_size,
                  BufferDataMode::STATIC_DRAW);
   } else {
-    assert(0);
+    Assert(0);
   }
 }
 
@@ -357,12 +366,12 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
     shader_spec.emplace_back(
         ShaderStageType::FRAGMENT,
         "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
-    axes_shader_id = shader_mgr.CreateShader(shader_spec);
+    axes_shader_id = shader_mgr.CreateShader("basic_line", shader_spec);
 
     if (auto id = gl_buffer_mgr.Create()) {
       axes_vbo_id = id;
     } else {
-      assert(0);
+      Assert(0);
     }
     auto vbo = gl_buffer_mgr.Get(axes_vbo_id);
     GLBufferData(*vbo, axes_verts.data(), sizeof(axes_verts),
@@ -372,11 +381,11 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
     if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
       axes_vao_id = *vao_id;
     } else {
-      assert(0);
+      Assert(0);
     }
   }
 
-  assert(axes_vao_id && axes_vbo_id && axes_shader_id);
+  Assert(axes_vao_id && axes_vbo_id && axes_shader_id);
 
   auto &engine = QuixotismEngine::GetEngine();
   auto window_dim = engine.GetWindowDim();
@@ -384,7 +393,7 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
   auto vao = vertex_array_mgr.Get(axes_vao_id);
   auto vbo = gl_buffer_mgr.Get(axes_vbo_id);
   if (!vao || !vbo) {
-    assert(0);
+    Assert(0);
   }
 
   BindVertexBufferToVertexArray(*vao, *vbo, 0);
@@ -394,14 +403,14 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
   auto *camera = engine.entity_mgr.GetComponent<CameraComponent>(camera_id);
 
   auto *shader = shader_mgr.Get(axes_shader_id);
-  assert(shader);
+  Assert(shader);
   GLCall(glUseProgram((*shader).id));
   auto &transform = engine.entity_mgr.Get(engine.GetCamera())->transform;
   shader->SetUniform("view", transform.GetRotationMatrix());
   shader->SetUniform("projection", camera->GetProjectionMatrix());
   shader->SetUniform("scale", 0.05f);
 
-  GLCall(glLineWidth(5.0));
+  GLCall(glLineWidth(3.0));
   shader->SetUniform("Color", Vec3{1, 0, 0});
   GLCall(glDrawArrays(GL_LINES, 0, 2));
   shader->SetUniform("Color", Vec3{0, 1, 0});

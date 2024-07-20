@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "core/material_manager.hpp"
 #include "core/static_mesh_manager.hpp"
 #include "core/transform.hpp"
 #include "gl_buffer_manager.hpp"
@@ -33,13 +34,12 @@ class QuixotismRenderer {
 
   void ClearRenderTarget();
 
-  void Test();
-
   void PushText(std::string&& text, Vec2 position, r32 scale);
   void DrawText();
 
   void PrepareDrawStaticMeshes();
-  void DrawStaticMesh(const StaticMeshId id, const Transform& transform);
+  void DrawStaticMesh(const StaticMeshId sm_id, const MaterialID mat_id,
+                      const Transform& transform);
 
   void MakeDrawableStaticMesh(StaticMeshId id);
 
@@ -50,9 +50,12 @@ class QuixotismRenderer {
 
   VertexArrayID vao_id = 0, text_vao = 0;
   GLBufferID text_vbo_id = 0;
-  ShaderID shader_id, shader_id2, font_shader_id;
-  TextureID texture_id;
+  ShaderID shader_id, font_shader_id;
+  GLTextureID texture_id;
   SamplerID sampler_id;
+  SamplerID sampler_id2;
+
+  ShaderManager shader_mgr;
 
  private:
   QuixotismRenderer();
@@ -64,7 +67,6 @@ class QuixotismRenderer {
   std::unique_ptr<u8[]> cached_text_vert_buffer;
   size_t cached_text_vert_buffer_size = 0;
 
-  ShaderManager shader_mgr;
   GLTextureManager texture_mgr;
   GLSamplerManager sampler_mgr;
 };

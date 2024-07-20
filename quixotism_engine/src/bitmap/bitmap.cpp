@@ -1,4 +1,4 @@
-#include "bitmap_processing/bitmap.hpp"
+#include "bitmap/bitmap.hpp"
 
 #include <algorithm>
 #include <numeric>
@@ -18,7 +18,7 @@ i32 Bitmap::FormatChannelCount(BitmapFormat format) {
     case BitmapFormat::UNSPECIFIED:
       return 0;
     default:
-      assert(!"unreachable");
+      Assert(!"unreachable");
   }
 }
 
@@ -33,11 +33,11 @@ i32 Bitmap::FormatBytesPerPixel(BitmapFormat format) {
     case BitmapFormat::UNSPECIFIED:
       return 0;
     default:
-      assert(!"unreachable");
+      Assert(!"unreachable");
   }
 }
 
-Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
+Bitmap::Bitmap(u32 _width, u32 _height, BitmapFormat _format)
     : width{_width}, height{_height}, format{_format} {
   data = std::make_unique<u8[]>(width * height * BytesPerPixel());
 }
@@ -55,17 +55,17 @@ Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
             });
 
   // first compute what bitmap size we need to pack all bitmaps
-  i32 current_bitmap_dimension = 256;
+  u32 current_bitmap_dimension = 256;
   while (current_bitmap_dimension <= max_bitmap_dim) {
     bool finished = true;
-    i32 current_height =
+    u32 current_height =
             bitmaps[bitmap_indicies[0]].GetHeight() + (2 * padding),
         current_width = 0;
     if (current_height > current_bitmap_dimension) {
       current_bitmap_dimension <<= 1;
       continue;
     }
-    i32 prev_row_height = current_height;
+    u32 prev_row_height = current_height;
     for (auto idx : bitmap_indicies) {
       const auto [width, height] = bitmaps[idx].GetDim();
       current_width += width + (2 * padding);
@@ -99,8 +99,8 @@ Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
              Bitmap::BitmapFormat::R8};
   packed_font.coords.resize(bitmaps.size());
 
-  i32 current_height = padding, current_width = 0;
-  i32 prev_row_height = bitmaps[bitmap_indicies[0]].GetHeight();
+  u32 current_height = padding, current_width = 0;
+  u32 prev_row_height = bitmaps[bitmap_indicies[0]].GetHeight();
   for (const auto idx : bitmap_indicies) {
     const auto &bitmap = bitmaps[idx];
     const auto [width, height] = bitmap.GetDim();
@@ -108,8 +108,8 @@ Bitmap::Bitmap(i32 _width, i32 _height, BitmapFormat _format)
       current_width = 0;
       current_height += (prev_row_height + (2 * padding));
       prev_row_height = height;
-      assert(current_width <= current_bitmap_dimension);
-      assert(current_height <= current_bitmap_dimension);
+      Assert(current_width <= current_bitmap_dimension);
+      Assert(current_height <= current_bitmap_dimension);
     }
     current_width += padding;
     BitmapCoord coord;

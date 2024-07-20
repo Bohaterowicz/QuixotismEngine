@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 #include <cstdint>
 #include <type_traits>
 
@@ -21,6 +20,15 @@
 #endif
 #endif
 
+#ifndef NDEBUG
+#define Assert(Expression) \
+  if (!(Expression)) {     \
+    *(int *)0 = 0;         \
+  }
+#else
+#define Assert(Expression)
+#endif
+
 #define Kilobytes(X) (X * 1024LL)
 #define Megabytes(X) (Kilobytes(X) * 1024LL)
 #define Gigabytes(X) (Megabytes(X) * 1024LL)
@@ -40,8 +48,10 @@ using u64 = uint64_t;
 using r32 = float;
 using r64 = double;
 
+namespace quixotism {
+
 template <typename T, size_t N>
-inline consteval auto ArraySize(T (&Arr)[N]) {
+inline consteval auto ArrayCount(T (&Arr)[N]) {
   return N;
 }
 
@@ -61,11 +71,20 @@ constexpr typename std::underlying_type<E>::type EnumValue(E e) noexcept {
 inline u32 SafeU64ToU32(u64 Value) {
   // Assert that the value stored in the uint64 is smaller or equal to a maximum
   // uint32 value, so that we wont lose anythinbg during truncation
-  assert(Value <= 0xFFFFFFFF);
+  Assert(Value <= 0xFFFFFFFF);
   // Get the 32bit value from the 64bit LARGE_INTEGER
   auto Value32 = static_cast<u32>(Value);
   return Value32;
 }
+
+inline constexpr u32 FOURCC(const char *String) {
+  return (((static_cast<u32>(String[0])) << 0) |
+          ((static_cast<u32>(String[1])) << 8) |
+          ((static_cast<u32>(String[2])) << 16) |
+          ((static_cast<u32>(String[3])) << 24));
+}
+
+}  // namespace quixotism
 
 #define CLASS_DELETE_COPY_CTOR(class) class(const class &) = delete;
 #define CLASS_DELETE_MOVE_CTOR(class) class(class &&) = delete;

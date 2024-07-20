@@ -7,10 +7,11 @@ in vec2 TexCoord;
 
 uniform vec3 light_pos;
 uniform vec3 view_pos;
+uniform sampler2D diffuse_tex;
 
 void main() {
+  vec4 dsamp = texture(diffuse_tex, TexCoord);
   vec3 lightColor = vec3(1, 1, 1);
-  vec3 objectColor = vec3(0.5, 0.5, 0.5);
   float specularStrength = 0.5;
   float ambientStrength = 0.5;
   vec3 ambient = ambientStrength * lightColor;
@@ -24,6 +25,6 @@ void main() {
   float spec = pow(max(dot(viewDir, reflectDir), 0.0), 64);
   vec3 specular = specularStrength * spec * lightColor;
 
-  vec3 result = (ambient + diffuse + specular) * objectColor;
+  vec3 result = (ambient + diffuse + specular) * dsamp.xyz;
   FragColor = vec4(result, 1.0);
 }

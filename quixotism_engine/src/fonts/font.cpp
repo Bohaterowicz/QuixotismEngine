@@ -20,7 +20,7 @@ static std::expected<std::pair<Bitmap, i32>, ParseFontError> GetGlyphFromFont(
     return std::unexpected(ParseFontError{});
   }
 
-  Bitmap glyph{width, height, Bitmap::BitmapFormat::R8};
+  Bitmap glyph{(u32)width, (u32)height, Bitmap::BitmapFormat::R8};
   u8 *source = stbtt_bitmap;
   u8 *dest_row = glyph.GetBitmapWritePtr() + ((height - 1) * width);
   for (i32 y = 0; y < height; ++y) {
@@ -42,7 +42,6 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
   auto font_scale = stbtt_ScaleForPixelHeight(&font_info, 180.0);
   std::vector<Bitmap> glyphs;
   GlyphInfoTable glyph_info_table;
-  GlyphInfo glyph_info;
   glyphs.reserve(Font::CODEPOINT_COUNT);
   glyph_info_table.reserve(Font::CODEPOINT_COUNT);
   std::unique_ptr<r32[]> kerning_table = nullptr;
@@ -107,12 +106,12 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
 }
 
 r32 Font::GetHorizontalAdvance(u32 code_point, u32 prev_code_point) const {
-  assert(code_point >= CODEPOINT_START && code_point <= CODEPOINT_END);
+  Assert(code_point >= CODEPOINT_START && code_point <= CODEPOINT_END);
   if (!prev_code_point) {
     return 0;
   }
 
-  assert(prev_code_point >= CODEPOINT_START &&
+  Assert(prev_code_point >= CODEPOINT_START &&
          prev_code_point <= CODEPOINT_END);
   size_t code_point_idx = code_point - CODEPOINT_START;
   size_t prev_code_point_idx = prev_code_point - CODEPOINT_START;

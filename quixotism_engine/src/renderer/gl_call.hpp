@@ -1,7 +1,7 @@
 #pragma once
 #include <GL/glew.h>
 
-#include <cassert>
+#include <cAssert>
 #include <print>
 
 #include "quixotism_c.hpp"
@@ -10,7 +10,7 @@
 #define GLCall(x) \
   GLClearError(); \
   x;              \
-  assert(GLLogCall(#x, __FILE__, __LINE__));
+  Assert(GLLogCall(#x, __FILE__, __LINE__));
 #else
 #define GLCall(x) x;
 #endif

@@ -1,8 +1,10 @@
 #include "quixotism_engine.hpp"
 
 #include "core/constants.hpp"
+#include "core/texture.hpp"
 #include "dbg_print.hpp"
 #include "file_processing/obj_parser/obj_parser.hpp"
+#include "file_processing/png_parser/png_parser.hpp"
 #include "renderer/quixotism_renderer.hpp"
 
 namespace quixotism {
@@ -24,6 +26,15 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
   InitTextFonts();
 
+  auto png_data = QuixotismEngine::GetEngine().services.read_file(
+      "D:/QuixotismEngine/quixotism_engine/data/textures/wood_box.png");
+  auto img = ParsePNG(png_data.data.get(), png_data.size);
+  if (img) {
+    Texture texture{std::move(img.value())};
+    texture.glid = CreateTexture(texture.bitmap, false);
+    tex_id = texture_mgr.Add(std::move(texture));
+  }
+
   auto obj_data = QuixotismEngine::GetEngine().services.read_file(
       "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
   auto meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
@@ -32,8 +43,12 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   auto mesh_id = static_mesh_mgr.Add(std::move(smesh));
   QuixotismRenderer::GetRenderer().MakeDrawableStaticMesh(mesh_id);
 
+  Material mat1{QuixotismRenderer::GetRenderer().shader_mgr.GetByName("model")};
+  mat1.diffuse = tex_id;
+  auto mat1_id = material_mgr.Add(std::move(mat1));
+
   Entity box;
-  StaticMeshComponent box_sm{mesh_id};
+  StaticMeshComponent box_sm{mesh_id, mat1_id};
   box.AddComponent(box_sm);
   box_id = entity_mgr.Add(std::move(box));
   auto box_id2 = entity_mgr.Clone(box_id);
@@ -109,8 +124,8 @@ void QuixotismEngine::DrawEntities() {
   for (auto& entity : entity_mgr) {
     auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
     if (!sm_comp) continue;
-    QuixotismRenderer::GetRenderer().DrawStaticMesh(sm_comp->GetStaticMeshId(),
-                                                    entity.transform);
+    QuixotismRenderer::GetRenderer().DrawStaticMesh(
+        sm_comp->GetStaticMeshId(), sm_comp->GetMaterialID(), entity.transform);
   }
 }
 

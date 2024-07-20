@@ -13,10 +13,10 @@ std::optional<VertexArrayID> VertexArrayManager::Create(
   }
 
   auto id = free_indicies.front();
-  assert(vao_array[id].id == VertexArray::INVALID_VAO_ID);
+  Assert(vao_array[id].id == VertexArray::INVALID_VAO_ID);
 
   GLCall(glCreateVertexArrays(1, &vao_array[id].id));
-  assert(vao_array[id].id != VertexArray::INVALID_VAO_ID);
+  Assert(vao_array[id].id != VertexArray::INVALID_VAO_ID);
 
   SpecifyAttributeLayout(id, layout);
   free_indicies.pop();
@@ -32,7 +32,7 @@ std::optional<VertexArray> VertexArrayManager::Get(VertexArrayID id) const {
 }
 
 bool VertexArrayManager::Exists(const VertexArrayID id) const {
-  assert(id < ARRAY_SIZE);
+  Assert(id < ARRAY_SIZE);
   return vao_array[id].id != VertexArray::INVALID_VAO_ID;
 }
 

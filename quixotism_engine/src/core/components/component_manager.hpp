@@ -32,7 +32,7 @@ class ComponentManager {
     } else if constexpr (IsStaticMeshComponent<TYPE>) {
       return Add(static_mesh_components, static_mesh_free_ids, component);
     } else {
-      assert(0);
+      Assert(0);
     }
   }
 

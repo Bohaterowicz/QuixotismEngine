@@ -19,5 +19,6 @@ class GLSampler {
 };
 
 GLSampler CreateSampler();
+GLSampler CreateSampler2();
 
 }  // namespace quixotism

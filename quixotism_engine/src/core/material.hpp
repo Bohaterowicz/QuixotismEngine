@@ -2,32 +2,22 @@
 #include <variant>
 
 #include "quixotism_c.hpp"
-#include "renderer/quixotism_renderer.hpp"
+#include "renderer/shader_manager.hpp"
+#include "texture_manager.hpp"
 
 namespace quixotism {
-
-class mat1 {
-  void Set(void *uniforms)[auto r = reinterpret_cast<*>(uniforms);]
-};
-
-class mat2 {};
 
 class Material {
  public:
   Material() = default;
+  Material(ShaderID _shader_id) : shader_id{_shader_id} {}
 
-  template <class T>
-  void SetUniform(const std::string &name, const T &value,
-                  const size_t count = 1) {
-    auto *shader = QuixotismRenderer::GetRenderer().shader_mgr.Get(shader_id);
-    if (shader) {
-      shader->SetUniform(name, value, count);
-    }
-  }
+  [[no_discard]] u32 GetShaderId() const { return shader_id; }
+
+  TextureID diffuse = 0;
 
  private:
-  std::variant<mat1, mat2> mat;
-  u32 shader_id = 0;
+  ShaderID shader_id = 0;
 };
 
 }  // namespace quixotism

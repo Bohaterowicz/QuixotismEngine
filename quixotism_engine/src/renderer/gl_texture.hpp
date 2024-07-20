@@ -1,5 +1,5 @@
 #pragma once
-#include "bitmap_processing/bitmap.hpp"
+#include "bitmap/bitmap.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {
@@ -19,6 +19,6 @@ class GLTexture {
   u32 id;
 };
 
-GLTexture CreateTexture(const Bitmap &bitmap);
+GLTexture CreateTexture(const Bitmap &bitmap, bool r8);
 
 }  // namespace quixotism

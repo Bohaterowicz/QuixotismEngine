@@ -4,8 +4,10 @@
 
 #include "core/entity_manager.hpp"
 #include "core/input.hpp"
+#include "core/material_manager.hpp"
 #include "core/platform_services.hpp"
 #include "core/static_mesh_manager.hpp"
+#include "core/texture_manager.hpp"
 #include "fonts/font.hpp"
 
 namespace quixotism {
@@ -41,6 +43,10 @@ class QuixotismEngine {
   PlatformServices services;
   EntityManager entity_mgr;
   StaticMeshManager static_mesh_mgr;
+  MaterialManager material_mgr;
+  TextureManager texture_mgr;
+
+  u64 tex_id;
 
  private:
   QuixotismEngine() {}

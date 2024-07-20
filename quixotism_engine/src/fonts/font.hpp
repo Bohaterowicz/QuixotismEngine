@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "bitmap_processing/bitmap.hpp"
+#include "bitmap/bitmap.hpp"
 #include "quixotism_c.hpp"
 #include "quixotism_error.hpp"
 
@@ -59,16 +59,16 @@ class Font {
         space_advance{space_advance},
         kerning_advancment{std::move(kerning)},
         kerning_size{kerning_size} {
-    assert((CODEPOINT_COUNT * CODEPOINT_COUNT) == kerning_size);
+    Assert((CODEPOINT_COUNT * CODEPOINT_COUNT) == kerning_size);
   };
 
   const Bitmap &GetBitmap() const { return packed_bitmap.bitmap; }
   const BitmapCoord &GetCodepointBitmapCoord(u32 codepoint) const {
-    assert(codepoint >= CODEPOINT_START && codepoint <= CODEPOINT_END);
+    Assert(codepoint >= CODEPOINT_START && codepoint <= CODEPOINT_END);
     return packed_bitmap.coords[codepoint - CODEPOINT_START];
   }
   const GlyphInfo &GetGlyphInfo(u32 codepoint) const {
-    assert(codepoint >= CODEPOINT_START && codepoint <= CODEPOINT_END);
+    Assert(codepoint >= CODEPOINT_START && codepoint <= CODEPOINT_END);
     size_t codepoint_idx = codepoint - CODEPOINT_START;
     return glyph_info[codepoint_idx];
   }

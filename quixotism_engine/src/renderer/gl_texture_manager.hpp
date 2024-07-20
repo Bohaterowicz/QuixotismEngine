@@ -4,7 +4,7 @@
 
 namespace quixotism {
 
-using TextureID = u32;
+using GLTextureID = u32;
 
 class GLTextureManager : public BucketArray<GLTexture> {
  public:

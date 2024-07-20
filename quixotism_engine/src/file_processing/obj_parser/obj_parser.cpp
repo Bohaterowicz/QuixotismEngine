@@ -32,7 +32,7 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
   while (Index < 3) {
     i32 IndexVal = 0;
     while (*Pos != '/') {
-      assert(isdigit(*Pos));
+      Assert(isdigit(*Pos));
       IndexVal = (IndexVal * 10) + *Pos - '0';
       ++Pos;
     }
@@ -41,7 +41,7 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
 
     IndexVal = 0;
     while (*Pos != '/') {
-      assert(isdigit(*Pos));
+      Assert(isdigit(*Pos));
       IndexVal = (IndexVal * 10) + *Pos - '0';
       ++Pos;
     }
@@ -50,7 +50,7 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
 
     IndexVal = 0;
     while (*Pos != ' ') {
-      assert(isdigit(*Pos));
+      Assert(isdigit(*Pos));
       IndexVal = (IndexVal * 10) + *Pos - '0';
       ++Pos;
     }
@@ -121,7 +121,7 @@ std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
                 ParseVecDataFromString<VertexNormal>(CurrentP));
           } break;
           default: {
-            assert(!"IMPOSSIBLE CODE PATH");
+            Assert(!"IMPOSSIBLE CODE PATH");
           } break;
         }
       } break;
