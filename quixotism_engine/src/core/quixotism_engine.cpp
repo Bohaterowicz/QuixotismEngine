@@ -43,6 +43,14 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   auto mesh_id = static_mesh_mgr.Add(std::move(smesh));
   QuixotismRenderer::GetRenderer().MakeDrawableStaticMesh(mesh_id);
 
+  obj_data = QuixotismEngine::GetEngine().services.read_file(
+      "D:/QuixotismEngine/quixotism_engine/data/meshes/sphere64.obj");
+  meshes = ParseOBJ(obj_data.data.get(), obj_data.size);
+
+  smesh = StaticMesh{std::move(meshes[0])};
+  auto s_mesh_id = static_mesh_mgr.Add(std::move(smesh));
+  QuixotismRenderer::GetRenderer().MakeDrawableStaticMesh(s_mesh_id);
+
   Material mat1{QuixotismRenderer::GetRenderer().shader_mgr.GetByName("model")};
   mat1.diffuse = tex_id;
   auto mat1_id = material_mgr.Add(std::move(mat1));
@@ -53,6 +61,11 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   box_id = entity_mgr.Add(std::move(box));
   auto box_id2 = entity_mgr.Clone(box_id);
   entity_mgr.Get(box_id2)->transform.Move(Vec3{100, 100, 100});
+
+  Entity sphere;
+  StaticMeshComponent sphere_sm{s_mesh_id, mat1_id};
+  sphere.AddComponent(sphere_sm);
+  entity_mgr.Add(std::move(sphere));
 }
 
 void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
@@ -112,6 +125,10 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
     }
   }
 
+  if (input.bb.ended_down) {
+    show_bb = !show_bb;
+  }
+
   renderer.ClearRenderTarget();
   DrawText("Hello Text!", -0.98, 0.8f, 0.8);
   DrawEntities();
@@ -126,6 +143,14 @@ void QuixotismEngine::DrawEntities() {
     if (!sm_comp) continue;
     QuixotismRenderer::GetRenderer().DrawStaticMesh(
         sm_comp->GetStaticMeshId(), sm_comp->GetMaterialID(), entity.transform);
+  }
+  if (show_bb) {
+    for (auto& entity : entity_mgr) {
+      auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
+      if (!sm_comp) continue;
+      QuixotismRenderer::GetRenderer().DrawBoundingBox(
+          sm_comp->GetStaticMeshId(), entity.transform);
+    }
   }
 }
 

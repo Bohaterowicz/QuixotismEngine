@@ -36,12 +36,11 @@ class StaticMesh {
 
   Mesh& GetMeshData() { return mesh; }
 
-  GLBufferID vbo_id, ebo_id;
+  GLBufferID vbo_id, ebo_id, bb_vbo_id;
   VertexArrayID vao_id;
 
  private:
   Mesh mesh;
-  
 };
 
 }  // namespace quixotism

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/components/component.hpp"
-#include "math/math.hpp"
+#include "math/qmath.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {

@@ -10,7 +10,7 @@
 #include "gl_sampler_manager.hpp"
 #include "gl_texture.hpp"
 #include "gl_texture_manager.hpp"
-#include "math/math.hpp"
+#include "math/qmath.hpp"
 #include "quixotism_c.hpp"
 #include "shader_manager.hpp"
 #include "vertex_array_manager.hpp"
@@ -44,6 +44,8 @@ class QuixotismRenderer {
   void MakeDrawableStaticMesh(StaticMeshId id);
 
   void DrawXYZAxesOverlay();
+
+  void DrawBoundingBox(const StaticMeshId sm_id, const Transform& transform);
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;

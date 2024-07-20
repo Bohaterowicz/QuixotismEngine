@@ -110,6 +110,9 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
           if (vk_code == 'A') {
             Win32ProcessKeyboardInput(input.left, is_down);
           }
+          if (vk_code == 'B') {
+            Win32ProcessKeyboardInput(input.bb, is_down);
+          }
           if (vk_code == VK_ESCAPE) {
             Shutdown();
           }

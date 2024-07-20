@@ -48,6 +48,8 @@ class QuixotismEngine {
 
   u64 tex_id;
 
+  bool show_bb = false;
+
  private:
   QuixotismEngine() {}
 

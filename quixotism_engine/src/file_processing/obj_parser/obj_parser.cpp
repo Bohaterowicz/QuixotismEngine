@@ -60,6 +60,17 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
   }
 }
 
+void UpdateBounds(BoundingBox &bounds, VertexPos &vert) {
+  auto &low = bounds.low;
+  auto &high = bounds.high;
+  low.x = Min(low.x, vert.x);
+  low.y = Min(low.y, vert.y);
+  low.z = Min(low.z, vert.z);
+  high.x = Max(high.x, vert.x);
+  high.y = Max(high.y, vert.y);
+  high.z = Max(high.z, vert.z);
+}
+
 std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
   std::vector<Mesh> Objects;
   // Sanity check, that we actaully got some data to parse...
@@ -74,6 +85,7 @@ std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
   i32 NormalIdxOffset = 0;
   i32 TexCoordIdxOffset = 0;
   Mesh CurrentObject;
+  bool first_vert = true;
   bool NewObject = true;
 
   // keep looping until we get to the file end
@@ -96,6 +108,7 @@ std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
           CurrentObject.VertexTriangleIndicies.PosIdx.reserve(1024);
           CurrentObject.VertexTriangleIndicies.NormalIdx.reserve(1024);
           CurrentObject.VertexTriangleIndicies.TexCoordIdx.reserve(1024);
+          first_vert = true;
           NewObject = false;
         }
         // advance to next character
@@ -105,8 +118,15 @@ std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
             // got vertex positions
             // skip past white-spcae
             CurrentP += 2;
-            CurrentObject.VertexPosData.emplace_back(
-                ParseVecDataFromString<VertexPos>(CurrentP));
+            auto vert = ParseVecDataFromString<VertexPos>(CurrentP);
+            if (first_vert) {
+              first_vert = false;
+              CurrentObject.bbox.low = vert;
+              CurrentObject.bbox.high = vert;
+            } else {
+              UpdateBounds(CurrentObject.bbox, vert);
+            }
+            CurrentObject.VertexPosData.push_back(vert);
           } break;
           case 't': {
             // got vertex textuure coordinates

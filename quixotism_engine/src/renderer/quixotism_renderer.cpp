@@ -11,6 +11,28 @@
 
 namespace quixotism {
 
+static ShaderID CreateBasicLineSader(ShaderManager &shader_mgr) {
+  ShaderStageSpec shader_spec;
+  shader_spec.emplace_back(
+      ShaderStageType::VERTEX,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
+  return shader_mgr.CreateShader("basic_line", shader_spec);
+}
+
+static ShaderID CreateBasicXYZAxesSader(ShaderManager &shader_mgr) {
+  ShaderStageSpec shader_spec;
+  shader_spec.emplace_back(
+      ShaderStageType::VERTEX,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/xyz_axes.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
+  return shader_mgr.CreateShader("xyz_axes", shader_spec);
+}
+
 QuixotismRenderer::QuixotismRenderer() {
   auto dim = QuixotismEngine::GetEngine().GetWindowDim();
   GLCall(glViewport(0, 0, dim.width, dim.height));
@@ -272,6 +294,54 @@ void QuixotismRenderer::PrepareDrawStaticMeshes() {
   shader->SetUniform("light_pos", light_pos);
 }
 
+void QuixotismRenderer::DrawBoundingBox(const StaticMeshId sm_id,
+                                        const Transform &transform) {
+  static VertexArrayID bb_vao_id = VertexArray::INVALID_VAO_ID;
+  static ShaderID bb_shader_id = Shader::INVALID_SHADER_ID;
+  auto &engine = QuixotismEngine::GetEngine();
+  auto *sm = engine.static_mesh_mgr.Get(sm_id);
+  if (!bb_vao_id) {
+    VertexBufferLayout vao_layout;
+    vao_layout.AddLayoutElementF(3, false, 0);
+    if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
+      bb_vao_id = *vao_id;
+    } else {
+      Assert(0);
+    }
+
+    bb_shader_id = shader_mgr.GetByName("basic_line");
+    if (!bb_shader_id) {
+      bb_shader_id = CreateBasicLineSader(shader_mgr);
+      Assert(bb_shader_id);
+    }
+  }
+
+  auto vao = vertex_array_mgr.Get(bb_vao_id);
+  auto vbo = gl_buffer_mgr.Get(sm->bb_vbo_id);
+  if (!vao || !vbo) {
+    Assert(0);
+  }
+
+  BindVertexBufferToVertexArray(*vao, *vbo, 0);
+  BindVertexArray(*vao);
+
+  auto camera_id = engine.GetCamera();
+  auto *camera = engine.entity_mgr.Get(engine.GetCamera());
+
+  auto *shader = shader_mgr.Get(bb_shader_id);
+  Assert(shader);
+  GLCall(glUseProgram((*shader).id));
+  shader->SetUniform("model", transform.GetTransformMatrix());
+  shader->SetUniform("view", camera->transform.GetTransformMatrix());
+  shader->SetUniform(
+      "projection",
+      camera->GetComponent<CameraComponent>()->GetProjectionMatrix());
+
+  GLCall(glLineWidth(1.5));
+  shader->SetUniform("Color", Vec3{1, 0, 0});
+  GLCall(glDrawArrays(GL_LINE_STRIP, 0, 18));
+}
+
 void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
                                        const MaterialID mat_id,
                                        const Transform &transform) {
@@ -306,16 +376,101 @@ void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
                         GL_UNSIGNED_INT, 0));
 }
 
+static inline std::pair<std::unique_ptr<u8[]>, size_t>
+CreateBoundingBoxVertexBuffer(const BoundingBox &bb) {
+  size_t size =
+      18 * 3 * sizeof(r32);  // bounding box has 8 verts, each has 3 r32s
+  auto buffer = std::make_unique<u8[]>(size);
+  auto dst = (r32 *)buffer.get();
+
+  // min vert
+  *dst++ = bb.low.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.low.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.low.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.low.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.high.z;
+  //
+  *dst++ = bb.high.x;
+  *dst++ = bb.high.y;
+  *dst++ = bb.high.z;
+
+  return {std::move(buffer), size};
+}
+
 void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
   auto &engine = QuixotismEngine::GetEngine();
   auto sm_mesh = engine.static_mesh_mgr.Get(id);
   if (!sm_mesh) return;
 
   auto vbo_id = gl_buffer_mgr.Create();
+  auto bb_vbo_id = gl_buffer_mgr.Create();
   auto ebo_id = gl_buffer_mgr.Create();
-  if (vbo_id && ebo_id) {
+  if (vbo_id && ebo_id && bb_vbo_id) {
     sm_mesh->vbo_id = vbo_id;
     sm_mesh->ebo_id = ebo_id;
+    sm_mesh->bb_vbo_id = bb_vbo_id;
   } else {
     Assert(0);
   }
@@ -338,12 +493,17 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
   auto index_buffer = GenerateSerialIndexBuffer(vertex_count);
   size_t index_buffer_size = vertex_count * sizeof(u32);
 
+  auto [bb_buffer, bb_buffer_size] = CreateBoundingBoxVertexBuffer(mesh.bbox);
+
   auto vbo_buf = gl_buffer_mgr.Get(sm_mesh->vbo_id);
   auto ebo_buf = gl_buffer_mgr.Get(sm_mesh->ebo_id);
-  if (vbo_buf && ebo_buf) {
+  auto bb_vbo_buf = gl_buffer_mgr.Get(sm_mesh->bb_vbo_id);
+  if (vbo_buf && ebo_buf && bb_vbo_buf) {
     GLBufferData(*vbo_buf, vertex_buffer.get(), vertex_buffer_size,
                  BufferDataMode::STATIC_DRAW);
     GLBufferData(*ebo_buf, index_buffer.get(), index_buffer_size,
+                 BufferDataMode::STATIC_DRAW);
+    GLBufferData(*bb_vbo_buf, bb_buffer.get(), bb_buffer_size,
                  BufferDataMode::STATIC_DRAW);
   } else {
     Assert(0);
@@ -359,14 +519,11 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
                                         Vec3{0, 0, 0}, Vec3{0, 0, 1}};
 
   if (!axes_vbo_id) {
-    ShaderStageSpec shader_spec;
-    shader_spec.emplace_back(
-        ShaderStageType::VERTEX,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.vert");
-    shader_spec.emplace_back(
-        ShaderStageType::FRAGMENT,
-        "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
-    axes_shader_id = shader_mgr.CreateShader("basic_line", shader_spec);
+    axes_shader_id = shader_mgr.GetByName("xyz_axes");
+    if (!axes_shader_id) {
+      axes_shader_id = CreateBasicXYZAxesSader(shader_mgr);
+      Assert(axes_shader_id);
+    }
 
     if (auto id = gl_buffer_mgr.Create()) {
       axes_vbo_id = id;

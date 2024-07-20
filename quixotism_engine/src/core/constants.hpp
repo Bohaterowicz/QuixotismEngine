@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math/math.hpp"
+#include "math/qmath.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {

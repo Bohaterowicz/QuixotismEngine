@@ -25,6 +25,7 @@ struct ControllerInput {
       ButtonState b;
       ButtonState x;
       ButtonState y;
+      ButtonState bb;
 
       // IMPORTANT: All buttons must be added before this line!
       ButtonState _END;

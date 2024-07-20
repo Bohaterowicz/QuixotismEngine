@@ -9,7 +9,7 @@
 
 #include "containers/bucket_array.hpp"
 #include "dbg_print.hpp"
-#include "math/math.hpp"
+#include "math/qmath.hpp"
 #include "quixotism_c.hpp"
 
 namespace quixotism {
