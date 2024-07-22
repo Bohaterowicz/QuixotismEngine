@@ -21,6 +21,7 @@ struct TextDrawInfo {
   std::string text;
   Vec2 position;
   r32 scale;
+  u32 layer;
 };
 
 class QuixotismRenderer {
@@ -34,8 +35,8 @@ class QuixotismRenderer {
 
   void ClearRenderTarget();
 
-  void PushText(std::string&& text, Vec2 position, r32 scale);
-  void DrawText();
+  void PushText(std::string&& text, Vec2 position, r32 scale, u32 layer);
+  void DrawText(u32 layer);
 
   void PrepareDrawStaticMeshes();
   void DrawStaticMesh(const StaticMeshId sm_id, const MaterialID mat_id,
@@ -49,6 +50,8 @@ class QuixotismRenderer {
   void DrawBoundingBox(const StaticMeshId sm_id, const Transform& transform);
   void DrawTerminal(const StaticMeshId sm_id, const MaterialID mat_id,
                     const Transform& transform);
+
+  void ClearTextBuffer() { draw_text_queue.clear(); }
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;

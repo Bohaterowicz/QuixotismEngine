@@ -42,6 +42,8 @@ static void Win32ProcessKeyboardInput(ButtonState &new_state, bool is_down,
 }
 
 void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
+  input.transition = false;
+  input.ascii_code = -1;
   MSG message;
   while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE) == TRUE) {
     switch (message.message) {
@@ -89,7 +91,7 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
         if (transition) {
           if (vk_code == 'C') {
             if (is_down) {
-              DBG_PRINT("TOGGLING MOUSE VISIBILITY");
+              // DBG_PRINT("TOGGLING MOUSE VISIBILITY");
               /*
               Win32ProcessKeyboardInput(KeyboardController.Start, is_down);
               AppState.ToggleCursorHidden();
@@ -126,6 +128,12 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
         if (vk_code == 'T') {
           Win32ProcessKeyboardInput(input.tt, is_down, transition);
         }
+        if (vk_code == VK_RETURN) {
+          Win32ProcessKeyboardInput(input.enter, is_down, transition);
+        }
+
+        input.transition = is_down;
+        input.ascii_code = (vk_code >= '!' && vk_code <= '~') ? vk_code : -1;
       } break;
       default: {
         TranslateMessage(&message);

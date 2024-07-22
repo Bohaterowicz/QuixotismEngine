@@ -27,6 +27,7 @@ struct ControllerInput {
       ButtonState y;
       ButtonState bb;
       ButtonState tt;
+      ButtonState enter;
 
       // IMPORTANT: All buttons must be added before this line!
       ButtonState _END;
@@ -35,6 +36,9 @@ struct ControllerInput {
 
   r32 mouse_x_delta;
   r32 mouse_y_delta;
+
+  bool transition;
+  i32 ascii_code;
 };
 
 }  // namespace quixotism

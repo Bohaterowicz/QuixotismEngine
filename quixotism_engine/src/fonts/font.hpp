@@ -48,7 +48,7 @@ class Font {
   CLASS_DEFAULT_MOVE(Font);
   Font() = default;
   Font(PackedBitmap &&font_bitmap, GlyphInfoTable &&glyph_info, r32 scale,
-       i32 ascent, i32 descent, i32 line_gap, i32 space_advance,
+       i32 ascent, i32 descent, i32 line_gap, i32 space_advance, r32 _px_scale,
        std::unique_ptr<r32[]> &&kerning = nullptr, size_t kerning_size = 0)
       : packed_bitmap{std::move(font_bitmap)},
         glyph_info{std::move(glyph_info)},
@@ -57,6 +57,7 @@ class Font {
         descent{descent},
         line_gap{line_gap},
         space_advance{space_advance},
+        px_scale{_px_scale},
         kerning_advancment{std::move(kerning)},
         kerning_size{kerning_size} {
     Assert((CODEPOINT_COUNT * CODEPOINT_COUNT) == kerning_size);
@@ -79,6 +80,8 @@ class Font {
   i32 GetSpaceAdvance() const { return space_advance; }
 
   r32 GetHorizontalAdvance(u32 code_point, u32 prev_code_point) const;
+
+  r32 px_scale;
 
  private:
   PackedBitmap packed_bitmap;

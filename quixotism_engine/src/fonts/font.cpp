@@ -39,7 +39,7 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
                                                      const size_t ttf_size) {
   stbtt_fontinfo font_info{};
   stbtt_InitFont(&font_info, ttf_data, 0);
-  auto font_scale = stbtt_ScaleForPixelHeight(&font_info, 180.0);
+  auto font_scale = stbtt_ScaleForPixelHeight(&font_info, 80.0);
   std::vector<Bitmap> glyphs;
   GlyphInfoTable glyph_info_table;
   glyphs.reserve(Font::CODEPOINT_COUNT);
@@ -94,6 +94,8 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
     return std::unexpected(ParseFontError{});
   }
 
+  auto px_scale = stbtt_ScaleForPixelHeight(&font_info, 1.0);
+
   return Font{std::move(*packed_bitmap),
               std::move(glyph_info_table),
               font_scale,
@@ -101,6 +103,7 @@ std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
               descent,
               line_gap,
               space_advance,
+              px_scale,
               std::move(kerning_table),
               kerning_size};
 }

@@ -1,7 +1,11 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "core/material_manager.hpp"
 #include "core/static_mesh_manager.hpp"
+#include "core/text_input.hpp"
 #include "core/transform.hpp"
 #include "quixotism_c.hpp"
 
@@ -30,9 +34,15 @@ class Terminal {
   VisibilityState visibility_state = VisibilityState::HIDDEN;
   bool should_show = false;
 
+  void CommitInput(std::string txt);
+
+  TextInput input;
+
+  std::vector<std::string> text_lines;
+
   r32 ease_anim_speed = 1000.f;
   r32 anim_progress = 0.f;
-  u32 height = 100;
+  u32 height = 200;
   r32 normalized_height = 0;
 };
 

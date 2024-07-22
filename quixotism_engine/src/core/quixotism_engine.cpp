@@ -1,6 +1,7 @@
 #include "quixotism_engine.hpp"
 
 #include "core/constants.hpp"
+#include "core/gui_interactive.hpp"
 #include "core/texture.hpp"
 #include "dbg_print.hpp"
 #include "file_processing/obj_parser/obj_parser.hpp"
@@ -79,24 +80,29 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   auto rotation_speed = 1.0F;
   auto movement = Vec3{0.0F};
 
-  if (input.up.ended_down) {
-    movement += UP;
+  if (!focused_element) {
+    if (input.up.ended_down) {
+      movement += UP;
+    }
+    if (input.down.ended_down) {
+      movement += -UP;
+    }
+    if (input.forward.ended_down) {
+      movement += transform.Forward();
+    }
+    if (input.backward.ended_down) {
+      movement += -transform.Forward();
+    }
+    if (input.right.ended_down) {
+      movement += transform.Right();
+    }
+    if (input.left.ended_down) {
+      movement += -transform.Right();
+    }
+  } else {
+    focused_element->ProcessInput(input);
   }
-  if (input.down.ended_down) {
-    movement += -UP;
-  }
-  if (input.forward.ended_down) {
-    movement += transform.Forward();
-  }
-  if (input.backward.ended_down) {
-    movement += -transform.Forward();
-  }
-  if (input.right.ended_down) {
-    movement += transform.Right();
-  }
-  if (input.left.ended_down) {
-    movement += -transform.Right();
-  }
+
   if (movement.Length() > 0.0F) {
     transform.position += (movement.Normalize() * speed * delta_t);
   }
@@ -141,15 +147,18 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   terminal.Update(delta_t);
 
   renderer.ClearRenderTarget();
-  DrawText("Hello Text!", -0.98, 0.8f, 0.8);
+  DrawText("Hello Text!", -0.98, 0.8f, 0.03448);
   DrawEntities();
-  renderer.DrawText();
+  renderer.DrawText(0);
   renderer.DrawXYZAxesOverlay();
 
   if (terminal.IsVisible()) {
     renderer.DrawTerminal(terminal.smid, terminal.matid,
                           terminal.DrawTransform());
+    renderer.DrawText(1);
   }
+
+  renderer.ClearTextBuffer();
 }
 
 void QuixotismEngine::DrawEntities() {
@@ -182,8 +191,10 @@ void QuixotismEngine::InitTextFonts() {
   }
 }
 
-void QuixotismEngine::DrawText(std::string&& text, r32 x, r32 y, r32 scale) {
-  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, scale);
+void QuixotismEngine::DrawText(std::string text, r32 x, r32 y, r32 scale,
+                               u32 layer) {
+  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, scale,
+                                            layer);
 }
 
 }  // namespace quixotism

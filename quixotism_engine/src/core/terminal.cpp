@@ -35,6 +35,26 @@ void Terminal::Init() {
 
   matid = engine.material_mgr.Add(Material{
       QuixotismRenderer::GetRenderer().shader_mgr.GetByName("solid_color")});
+
+  text_lines = {"1. Hello Terminal",
+                "2. Some commands:",
+                "3. COMMAND_SOMETHING",
+                "4. COMMAND_SOMETHING_ELSE",
+                "5. MAYBE SOME OTHER COMMAND",
+                "6. EXIT",
+                "7. HACK MATRIX",
+                "8. ACTIVATE SKYNET",
+                "9. POWER"};
+
+  auto commit_func =
+      std::bind(&Terminal::CommitInput, this, std::placeholders::_1);
+  input.Init(commit_func);
+}
+
+void Terminal::CommitInput(std::string txt) {
+  DBG_PRINT(txt);
+  text_lines.erase(text_lines.begin());
+  text_lines.push_back(txt);
 }
 
 void Terminal::Update(r32 delta_t) {
@@ -54,6 +74,7 @@ void Terminal::Update(r32 delta_t) {
         }
       }
     }
+    input.SetFocus(true);
   } else {
     if (visibility_state == VisibilityState::VISIBILE ||
         visibility_state == VisibilityState::IN_ANIM) {
@@ -70,6 +91,23 @@ void Terminal::Update(r32 delta_t) {
         }
       }
     }
+    input.SetFocus(false);
+  }
+
+  if (visibility_state != VisibilityState::HIDDEN) {
+    auto &engine = QuixotismEngine::GetEngine();
+    auto dim = engine.GetWindowDim();
+    auto line_height = (r32)height / 10;
+    auto normalized_line_height = ((r32)line_height / (r32)dim.height) * 2;
+    auto scale = engine.font.px_scale * line_height;
+    auto x = -0.99;
+    auto y = (1.0 - normalized_line_height) + normalized_height -
+             (normalized_height * anim_progress);
+    for (auto &txt : text_lines) {
+      engine.DrawText(txt, x, y, scale, 1);
+      y -= normalized_line_height;
+    }
+    input.Update(y, scale);
   }
 }
 

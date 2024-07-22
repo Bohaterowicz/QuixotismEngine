@@ -11,8 +11,9 @@
 #include "core/texture_manager.hpp"
 #include "fonts/font.hpp"
 
-
 namespace quixotism {
+
+class GUI_Interactive;
 
 struct WindowDim {
   i32 width;
@@ -36,9 +37,11 @@ class QuixotismEngine {
 
   EntityId GetCamera() const { return camera_id; }
 
-  void DrawText(std::string&& text, float x, float y, r32 scale);
+  void DrawText(std::string text, float x, float y, r32 scale, u32 layer = 0);
 
   void DrawEntities();
+
+  void SetElementFocus(GUI_Interactive* element) { focused_element = element; }
 
   Font font;
 
@@ -56,6 +59,8 @@ class QuixotismEngine {
 
  private:
   QuixotismEngine() {}
+
+  GUI_Interactive* focused_element;
 
   EntityId camera_id, box_id;
 

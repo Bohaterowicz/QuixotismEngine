@@ -114,11 +114,13 @@ void QuixotismRenderer::CompileTextShader() {
   font_shader_id = shader_mgr.CreateShader("font_basic", shader_spec);
 }
 
-void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale) {
+void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale,
+                                 u32 layer) {
   TextDrawInfo info;
   info.text = std::move(text);
   info.position = position;
   info.scale = scale;
+  info.layer = layer;
   draw_text_queue.push_back(std::move(info));
 }
 
@@ -127,12 +129,21 @@ struct GlyphVert {
   r32 coord[2];
 };
 
-void QuixotismRenderer::DrawText() {
+void QuixotismRenderer::DrawText(u32 layer) {
   // first compute the buffer size needed to store vertex data or all characters
   // for all text to render
   size_t char_count = 0;
+  auto count_characters_no_space = [](const std::string &str) {
+    size_t count = 0;
+    for (const auto &c : str) {
+      if (c != ' ') ++count;
+    }
+    return count;
+  };
+
   for (const auto &text_info : draw_text_queue) {
-    char_count += text_info.text.size();
+    if (text_info.layer != layer) continue;
+    char_count += count_characters_no_space(text_info.text);
   }
 
   // for now we hard code that we use 6 verts per character (quad = 2 triangles)
@@ -160,33 +171,40 @@ void QuixotismRenderer::DrawText() {
 
   // now we fill the vertex data buffer
   auto &font = QuixotismEngine::GetEngine().font;
-  auto space_advance = font.GetSpaceAdvance();
   auto *vert = reinterpret_cast<GlyphVert *>(cached_text_vert_buffer.get());
   auto window_dim = QuixotismEngine::GetEngine().GetWindowDim();
   for (const auto &text_info : draw_text_queue) {
+    if (text_info.layer != layer) continue;
+    r32 scale_adjust = text_info.scale / font.GetScale();
     r32 position_x = text_info.position.x;
     u32 codepoint = 0, prev_codepoint = 0;
-    r32 screen_scale_x = static_cast<r32>(window_dim.width) / text_info.scale;
-    r32 screen_scale_y = static_cast<r32>(window_dim.height) / text_info.scale;
+    r32 screen_scale_x = 2.0f / static_cast<r32>(window_dim.width);
+    r32 screen_scale_y = 2.0f / static_cast<r32>(window_dim.height);
+
+    auto space_advance = font.GetSpaceAdvance() * scale_adjust;
     for (const auto &c : text_info.text) {
       codepoint = c;
       if (codepoint == ' ') {
-        position_x += space_advance / screen_scale_x;
+        position_x += space_advance * screen_scale_x;
         continue;
       }
       auto &coord = font.GetCodepointBitmapCoord(codepoint);
 
       auto &glyph_info = font.GetGlyphInfo(codepoint);
-      auto glyph_width = static_cast<r32>(glyph_info.width) / screen_scale_x;
-      auto glyph_height = static_cast<r32>(glyph_info.height) / screen_scale_y;
+      auto glyph_width =
+          (static_cast<r32>(glyph_info.width) * scale_adjust) * screen_scale_x;
+      auto glyph_height =
+          (static_cast<r32>(glyph_info.height) * scale_adjust) * screen_scale_y;
       auto baseline_offset =
-          static_cast<r32>(glyph_info.height + glyph_info.baseline_offset);
+          (static_cast<r32>(glyph_info.height + glyph_info.baseline_offset) *
+           scale_adjust);
 
       position_x =
-          position_x + (font.GetHorizontalAdvance(codepoint, prev_codepoint) /
+          position_x + ((font.GetHorizontalAdvance(codepoint, prev_codepoint) *
+                         scale_adjust) *
                         screen_scale_x);
       auto position_y =
-          text_info.position.y - (baseline_offset / screen_scale_y);
+          text_info.position.y - (baseline_offset * screen_scale_y);
       // tri1
       vert[0].pos[0] = position_x;
       vert[0].pos[1] = position_y;
@@ -223,8 +241,6 @@ void QuixotismRenderer::DrawText() {
       vert += 6;  // go over the 6 verticies we just wrote
     }
   }
-
-  draw_text_queue.clear();
 
   // potentially create buffer on gpu (if we did not have one already)
   if (!text_vbo_id) {
@@ -321,7 +337,7 @@ void QuixotismRenderer::DrawTerminal(const StaticMeshId sm_id,
   Assert(shader);
   GLCall(glUseProgram((*shader).id));
   shader->SetUniform("model", transform.GetOffsetMatrix());
-  shader->SetUniform("Color", Vec4{0.2, 0.2, 0.2, 0.8});
+  shader->SetUniform("Color", Vec4{0.2, 0.2, 0.2, 0.95});
   GLCall(glDepthMask(GL_FALSE));
   GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
   GLCall(glDepthMask(GL_TRUE));
