@@ -3,13 +3,13 @@
 #include <string>
 
 #include "core/entity_manager.hpp"
+#include "core/font_manager.hpp"
 #include "core/input.hpp"
 #include "core/material_manager.hpp"
 #include "core/platform_services.hpp"
 #include "core/static_mesh_manager.hpp"
 #include "core/terminal.hpp"
 #include "core/texture_manager.hpp"
-#include "fonts/font.hpp"
 
 namespace quixotism {
 
@@ -37,21 +37,21 @@ class QuixotismEngine {
 
   EntityId GetCamera() const { return camera_id; }
 
-  void DrawText(std::string text, float x, float y, r32 scale, u32 layer = 0);
+  void DrawText(std::string text, float x, float y, r32 scale, u32 layer = 0,
+                u64 font_id = 0);
   void DrawText(std::string text, r32 x, r32 y, Vec3 color, r32 scale,
-                u32 layer);
+                u32 layer, u64 font_id = 0);
 
   void DrawEntities();
 
   void SetElementFocus(GUI_Interactive* element) { focused_element = element; }
-
-  Font font;
 
   PlatformServices services;
   EntityManager entity_mgr;
   StaticMeshManager static_mesh_mgr;
   MaterialManager material_mgr;
   TextureManager texture_mgr;
+  FontManager font_mgr;
 
   u64 tex_id;
 

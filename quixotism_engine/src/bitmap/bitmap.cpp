@@ -137,4 +137,31 @@ Bitmap::Bitmap(u32 _width, u32 _height, BitmapFormat _format)
   return packed_font;
 }
 
+void CopyBitmap(const Bitmap &src_bitmap, Bitmap &dst_bitmap, u32 dst_xoffset,
+                u32 dst_yoffset) {
+  if (dst_xoffset || dst_yoffset) {
+    Assert(0);
+  }
+
+  Assert(src_bitmap.GetWidth() <= dst_bitmap.GetWidth() &&
+         src_bitmap.GetHeight() <= dst_bitmap.GetHeight());
+  Assert(src_bitmap.BytesPerPixel() == dst_bitmap.BytesPerPixel());
+
+  auto [copy_width, copy_height] = src_bitmap.GetDim();
+  size_t copy_size = src_bitmap.BytesPerPixel();
+  size_t bytes_per_row = copy_size * dst_bitmap.GetWidth();
+  auto src = src_bitmap.GetBitmapPtr();
+  auto dst = dst_bitmap.GetBitmapWritePtr();
+  auto row = dst;
+  for (u32 y = 0; y < copy_height; ++y) {
+    auto pixel = row;
+    for (u32 x = 0; x < copy_width; ++x) {
+      std::memcpy(pixel, src, copy_size);
+      src += copy_size;
+      pixel += copy_size;
+    }
+    row += bytes_per_row;
+  }
+}
+
 }  // namespace quixotism

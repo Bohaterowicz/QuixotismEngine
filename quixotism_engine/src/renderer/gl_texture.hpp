@@ -20,5 +20,6 @@ class GLTexture {
 };
 
 GLTexture CreateTexture(const Bitmap &bitmap, bool r8);
+GLTexture CreateTextureArray(const Bitmap **bitmap, size_t count, bool r8);
 
 }  // namespace quixotism

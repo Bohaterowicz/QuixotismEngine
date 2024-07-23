@@ -93,7 +93,13 @@ class Font {
   i32 ascent, descent, line_gap, space_advance;
 };
 
-std::expected<Font, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
-                                                     const size_t ttf_size);
+struct FontSet {
+  static constexpr r32 font_sizes[5] = {20, 40, 60, 80, 100};
+  Font fonts[5];
+  u64 texture_id = 0;
+};
+
+std::expected<FontSet, ParseFontError> TTFMakeASCIIFont(const u8 *ttf_data,
+                                                        const size_t ttf_size);
 
 }  // namespace quixotism

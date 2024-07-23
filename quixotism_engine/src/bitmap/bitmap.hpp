@@ -65,4 +65,7 @@ std::expected<PackedBitmap, BitmapError> PackBitmaps(
     const std::vector<Bitmap> &bitmaps, const i32 padding = 2,
     const i32 max_bitmap_dim = 4096);
 
+void CopyBitmap(const Bitmap &src, Bitmap &dst, u32 dst_xoffset = 0,
+                u32 dst_yoffset = 0);
+
 }  // namespace quixotism

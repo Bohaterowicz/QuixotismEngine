@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "core/font_manager.hpp"
 #include "core/material_manager.hpp"
 #include "core/static_mesh_manager.hpp"
 #include "core/transform.hpp"
@@ -23,6 +24,7 @@ struct TextDrawInfo {
   Vec3 color;
   r32 scale;
   u32 layer;
+  FontID font_id;
 };
 
 class QuixotismRenderer {
@@ -36,9 +38,10 @@ class QuixotismRenderer {
 
   void ClearRenderTarget();
 
-  void PushText(std::string&& text, Vec2 position, r32 scale, u32 layer);
+  void PushText(std::string&& text, Vec2 position, r32 scale, u32 layer,
+                FontID font_id);
   void PushText(std::string&& text, Vec2 position, Vec3 color, r32 scale,
-                u32 layer);
+                u32 layer, FontID font_id);
   void DrawText(u32 layer);
 
   void PrepareDrawStaticMeshes();
@@ -62,7 +65,6 @@ class QuixotismRenderer {
   VertexArrayID vao_id = 0, text_vao = 0;
   GLBufferID text_vbo_id = 0;
   ShaderID shader_id, font_shader_id;
-  GLTextureID texture_id;
   SamplerID sampler_id;
   SamplerID sampler_id2;
 
@@ -73,7 +75,7 @@ class QuixotismRenderer {
 
   void CompileTextShader();
 
-  std::vector<TextDrawInfo> draw_text_queue;
+  std::unordered_map<u64, std::vector<TextDrawInfo>> draw_text_queue;
 
   std::unique_ptr<u8[]> cached_text_vert_buffer;
   size_t cached_text_vert_buffer_size = 0;

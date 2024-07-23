@@ -100,10 +100,12 @@ void Terminal::Update(r32 delta_t) {
     auto line_height = (r32)height / 10;
     auto normalize_height = 2.f / ((r32)dim.height);
     auto normalized_line_height = (r32)line_height * normalize_height;
-    auto scale = engine.font.px_scale * line_height;
+    auto *font = engine.font_mgr.GetByFontSize(engine.font_mgr.GetDefault(),
+                                               line_height);
+    auto scale = font->px_scale * line_height;
     auto x = -0.99;
     auto y = (1.0 - normalized_line_height +
-              ((r32)-engine.font.GetDescent() * scale * normalize_height) +
+              ((r32)-font->GetDescent() * scale * normalize_height) +
               normalized_height - (normalized_height * anim_progress));
     for (auto &txt : text_lines) {
       engine.DrawText(txt.text, x, y, txt.color, scale, 1);

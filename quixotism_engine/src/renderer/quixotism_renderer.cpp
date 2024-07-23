@@ -90,12 +90,26 @@ QuixotismRenderer::QuixotismRenderer() {
   auto sampler = CreateSampler();
   sampler_id = sampler_mgr.Add(std::move(sampler));
   sampler_id2 = sampler_mgr.Add(CreateSampler2());
-  auto &bitmap = QuixotismEngine::GetEngine().font.GetBitmap();
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  auto font_texture = CreateTexture(bitmap, true);
-  glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
-  texture_id = texture_mgr.Add(std::move(font_texture));
+  for (auto &font_set : QuixotismEngine::GetEngine().font_mgr) {
+    auto [max_width, max_height] = font_set.fonts[4].GetBitmap().GetDim();
+    Bitmap bitmap_arr[4];
+    const Bitmap *bitmap_ptr_arr[5] = {};
+    bitmap_ptr_arr[4] = &font_set.fonts[4].GetBitmap();
+    for (u32 idx = 0; idx < (ArrayCount(FontSet::font_sizes) - 1); ++idx) {
+      auto &font = font_set.fonts[idx];
+      auto &bitmap = font.GetBitmap();
+      Bitmap tmp_bitmap{(u32)max_width, (u32)max_height,
+                        Bitmap::BitmapFormat::R8};
+      CopyBitmap(bitmap, tmp_bitmap);
+      bitmap_arr[idx] = std::move(tmp_bitmap);
+      bitmap_ptr_arr[idx] = &bitmap_arr[idx];
+    }
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    auto font_texture = CreateTextureArray(&bitmap_ptr_arr[0], 5, true);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    font_set.texture_id = texture_mgr.Add(std::move(font_texture));
+  }
 }
 
 void QuixotismRenderer::ClearRenderTarget() {
@@ -116,212 +130,231 @@ void QuixotismRenderer::CompileTextShader() {
 }
 
 void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale,
-                                 u32 layer) {
-  PushText(std::move(text), position, Color::WHITE, scale, layer);
+                                 u32 layer, FontID font_id) {
+  PushText(std::move(text), position, Color::WHITE, scale, layer, font_id);
 }
 
 void QuixotismRenderer::PushText(std::string &&text, Vec2 position, Vec3 color,
-                                 r32 scale, u32 layer) {
+                                 r32 scale, u32 layer, FontID font_id) {
   TextDrawInfo info;
   info.text = std::move(text);
   info.position = position;
   info.color = color;
   info.scale = scale;
   info.layer = layer;
-  draw_text_queue.push_back(std::move(info));
+  if (!font_id) font_id = QuixotismEngine::GetEngine().font_mgr.GetDefault();
+  info.font_id = font_id;
+  draw_text_queue[font_id].push_back(std::move(info));
 }
 
 struct GlyphVert {
   r32 pos[2];
-  r32 coord[2];
+  r32 coord[3];
   r32 color[3];
 };
 
 void QuixotismRenderer::DrawText(u32 layer) {
-  // first compute the buffer size needed to store vertex data or all characters
-  // for all text to render
-  size_t char_count = 0;
-  auto count_characters_no_space = [](const std::string &str) {
-    size_t count = 0;
-    for (const auto &c : str) {
-      if (c != ' ') ++count;
-    }
-    return count;
-  };
-
-  for (const auto &text_info : draw_text_queue) {
-    if (text_info.layer != layer) continue;
-    char_count += count_characters_no_space(text_info.text);
-  }
-
-  // for now we hard code that we use 6 verts per character (quad = 2 triangles)
-  // with 7 floats per vertex (x, y, u, v, r, g, b)
-  static constexpr size_t vertex_size = 7 * sizeof(r32);
+  // for now we hard code that we use 6 verts per character (quad = 2
+  // triangles) with 8 floats per vertex (x, y, u, v, z, r, g, b)
+  static constexpr size_t vertex_size = 8 * sizeof(r32);
   static constexpr size_t verts_per_triangle = 3;
-  size_t triangle_count = char_count * 2;
-  size_t vertex_count = triangle_count * verts_per_triangle;
-  size_t required_buffer_size = vertex_count * vertex_size;
-  if (required_buffer_size == 0) {
-    return;
-  }
-
-  if (cached_text_vert_buffer_size < required_buffer_size) {
-    size_t buffer_size = 512;
-    while (buffer_size < required_buffer_size) {
-      buffer_size <<= 1;
-    }
-    cached_text_vert_buffer = std::make_unique<u8[]>(buffer_size);
-    cached_text_vert_buffer_size = buffer_size;
-  }
-
-  Assert(cached_text_vert_buffer &&
-         cached_text_vert_buffer_size >= required_buffer_size);
-
-  // now we fill the vertex data buffer
-  auto &font = QuixotismEngine::GetEngine().font;
-  auto *vert = reinterpret_cast<GlyphVert *>(cached_text_vert_buffer.get());
-  auto window_dim = QuixotismEngine::GetEngine().GetWindowDim();
-  for (const auto &text_info : draw_text_queue) {
-    if (text_info.layer != layer) continue;
-    r32 scale_adjust = text_info.scale / font.GetScale();
-    r32 position_x = text_info.position.x;
-    u32 codepoint = 0, prev_codepoint = 0;
-    r32 screen_scale_x = 2.0f / static_cast<r32>(window_dim.width);
-    r32 screen_scale_y = 2.0f / static_cast<r32>(window_dim.height);
-
-    auto space_advance = font.GetSpaceAdvance() * text_info.scale;
-    for (const auto &c : text_info.text) {
-      codepoint = c;
-      if (codepoint == ' ') {
-        position_x += space_advance * screen_scale_x;
-        continue;
+  for (const auto &[font_id, text_queue] : draw_text_queue) {
+    // first compute the buffer size needed to store vertex data or all
+    // characters
+    // for all text to render
+    size_t char_count = 0;
+    auto count_characters_no_space = [](const std::string &str) {
+      size_t count = 0;
+      for (const auto &c : str) {
+        if (c != ' ') ++count;
       }
-      auto &coord = font.GetCodepointBitmapCoord(codepoint);
+      return count;
+    };
 
-      auto &glyph_info = font.GetGlyphInfo(codepoint);
-      auto glyph_width =
-          (static_cast<r32>(glyph_info.width) * scale_adjust) * screen_scale_x;
-      auto glyph_height =
-          (static_cast<r32>(glyph_info.height) * scale_adjust) * screen_scale_y;
-      auto baseline_offset =
-          (static_cast<r32>(glyph_info.height + glyph_info.baseline_offset) *
-           scale_adjust);
-
-      position_x =
-          position_x + ((font.GetHorizontalAdvance(codepoint, prev_codepoint) *
-                         scale_adjust) *
-                        screen_scale_x);
-      auto position_y =
-          text_info.position.y - (baseline_offset * screen_scale_y);
-      // tri1
-      vert[0].pos[0] = position_x;
-      vert[0].pos[1] = position_y;
-      vert[0].coord[0] = coord.lower_left.x;
-      vert[0].coord[1] = coord.lower_left.y;
-      vert[0].color[0] = text_info.color[0];
-      vert[0].color[1] = text_info.color[1];
-      vert[0].color[2] = text_info.color[2];
-
-      vert[1].pos[0] = position_x + glyph_width;
-      vert[1].pos[1] = position_y;
-      vert[1].coord[0] = coord.top_right.x;
-      vert[1].coord[1] = coord.lower_left.y;
-      vert[1].color[0] = text_info.color[0];
-      vert[1].color[1] = text_info.color[1];
-      vert[1].color[2] = text_info.color[2];
-
-      vert[2].pos[0] = position_x;
-      vert[2].pos[1] = position_y + glyph_height;
-      vert[2].coord[0] = coord.lower_left.x;
-      vert[2].coord[1] = coord.top_right.y;
-      vert[2].color[0] = text_info.color[0];
-      vert[2].color[1] = text_info.color[1];
-      vert[2].color[2] = text_info.color[2];
-
-      // tri2
-      vert[3].pos[0] = position_x + glyph_width;
-      vert[3].pos[1] = position_y;
-      vert[3].coord[0] = coord.top_right.x;
-      vert[3].coord[1] = coord.lower_left.y;
-      vert[3].color[0] = text_info.color[0];
-      vert[3].color[1] = text_info.color[1];
-      vert[3].color[2] = text_info.color[2];
-
-      vert[4].pos[0] = position_x + glyph_width;
-      vert[4].pos[1] = position_y + glyph_height;
-      vert[4].coord[0] = coord.top_right.x;
-      vert[4].coord[1] = coord.top_right.y;
-      vert[4].color[0] = text_info.color[0];
-      vert[4].color[1] = text_info.color[1];
-      vert[4].color[2] = text_info.color[2];
-
-      vert[5].pos[0] = position_x;
-      vert[5].pos[1] = position_y + glyph_height;
-      vert[5].coord[0] = coord.lower_left.x;
-      vert[5].coord[1] = coord.top_right.y;
-      vert[5].color[0] = text_info.color[0];
-      vert[5].color[1] = text_info.color[1];
-      vert[5].color[2] = text_info.color[2];
-
-      prev_codepoint = codepoint;
-      vert += 6;  // go over the 6 verticies we just wrote
+    for (const auto &text_info : text_queue) {
+      if (text_info.layer != layer) continue;
+      char_count += count_characters_no_space(text_info.text);
     }
-  }
 
-  // potentially create buffer on gpu (if we did not have one already)
-  if (!text_vbo_id) {
-    if (auto id = gl_buffer_mgr.Create()) {
-      text_vbo_id = id;
-    } else {
+    size_t triangle_count = char_count * 2;
+    size_t vertex_count = triangle_count * verts_per_triangle;
+    size_t required_buffer_size = vertex_count * vertex_size;
+    if (required_buffer_size == 0) {
+      return;
+    }
+
+    if (cached_text_vert_buffer_size < required_buffer_size) {
+      size_t buffer_size = 512;
+      while (buffer_size < required_buffer_size) {
+        buffer_size <<= 1;
+      }
+      cached_text_vert_buffer = std::make_unique<u8[]>(buffer_size);
+      cached_text_vert_buffer_size = buffer_size;
+    }
+
+    Assert(cached_text_vert_buffer &&
+           cached_text_vert_buffer_size >= required_buffer_size);
+
+    // now we fill the vertex data buffer
+    auto *vert = reinterpret_cast<GlyphVert *>(cached_text_vert_buffer.get());
+    auto window_dim = QuixotismEngine::GetEngine().GetWindowDim();
+    for (const auto &text_info : text_queue) {
+      if (text_info.layer != layer) continue;
+      auto *font = QuixotismEngine::GetEngine().font_mgr.GetByFontScale(
+          text_info.font_id, text_info.scale);
+      auto font_idx = QuixotismEngine::GetEngine().font_mgr.GetFontIdxByScale(
+          text_info.font_id, text_info.scale);
+      r32 scale_adjust = text_info.scale / font->GetScale();
+      r32 position_x = text_info.position.x;
+      u32 codepoint = 0, prev_codepoint = 0;
+      r32 screen_scale_x = 2.0f / static_cast<r32>(window_dim.width);
+      r32 screen_scale_y = 2.0f / static_cast<r32>(window_dim.height);
+
+      // hardcoded for now becuase I am lazy...
+      r32 uv_adjust = font->GetBitmap().GetHeight() / 512.0f;
+
+      auto space_advance = font->GetSpaceAdvance() * text_info.scale;
+      for (const auto &c : text_info.text) {
+        codepoint = c;
+        if (codepoint == ' ') {
+          position_x += space_advance * screen_scale_x;
+          continue;
+        }
+        auto &coord = font->GetCodepointBitmapCoord(codepoint);
+
+        auto &glyph_info = font->GetGlyphInfo(codepoint);
+        auto glyph_width = (static_cast<r32>(glyph_info.width) * scale_adjust) *
+                           screen_scale_x;
+        auto glyph_height =
+            (static_cast<r32>(glyph_info.height) * scale_adjust) *
+            screen_scale_y;
+        auto baseline_offset =
+            (static_cast<r32>(glyph_info.height + glyph_info.baseline_offset) *
+             scale_adjust);
+
+        position_x = position_x +
+                     ((font->GetHorizontalAdvance(codepoint, prev_codepoint) *
+                       scale_adjust) *
+                      screen_scale_x);
+        auto position_y =
+            text_info.position.y - (baseline_offset * screen_scale_y);
+        // tri1
+        vert[0].pos[0] = position_x;
+        vert[0].pos[1] = position_y;
+        vert[0].coord[0] = coord.lower_left.x * uv_adjust;
+        vert[0].coord[1] = coord.lower_left.y * uv_adjust;
+        vert[0].coord[2] = font_idx;
+        vert[0].color[0] = text_info.color[0];
+        vert[0].color[1] = text_info.color[1];
+        vert[0].color[2] = text_info.color[2];
+
+        vert[1].pos[0] = position_x + glyph_width;
+        vert[1].pos[1] = position_y;
+        vert[1].coord[0] = coord.top_right.x * uv_adjust;
+        vert[1].coord[1] = coord.lower_left.y * uv_adjust;
+        vert[1].coord[2] = font_idx;
+        vert[1].color[0] = text_info.color[0];
+        vert[1].color[1] = text_info.color[1];
+        vert[1].color[2] = text_info.color[2];
+
+        vert[2].pos[0] = position_x;
+        vert[2].pos[1] = position_y + glyph_height;
+        vert[2].coord[0] = coord.lower_left.x * uv_adjust;
+        vert[2].coord[1] = coord.top_right.y * uv_adjust;
+        vert[2].coord[2] = font_idx;
+        vert[2].color[0] = text_info.color[0];
+        vert[2].color[1] = text_info.color[1];
+        vert[2].color[2] = text_info.color[2];
+
+        // tri2
+        vert[3].pos[0] = position_x + glyph_width;
+        vert[3].pos[1] = position_y;
+        vert[3].coord[0] = coord.top_right.x * uv_adjust;
+        vert[3].coord[1] = coord.lower_left.y * uv_adjust;
+        vert[3].coord[2] = font_idx;
+        vert[3].color[0] = text_info.color[0];
+        vert[3].color[1] = text_info.color[1];
+        vert[3].color[2] = text_info.color[2];
+
+        vert[4].pos[0] = position_x + glyph_width;
+        vert[4].pos[1] = position_y + glyph_height;
+        vert[4].coord[0] = coord.top_right.x * uv_adjust;
+        vert[4].coord[1] = coord.top_right.y * uv_adjust;
+        vert[4].coord[2] = font_idx;
+        vert[4].color[0] = text_info.color[0];
+        vert[4].color[1] = text_info.color[1];
+        vert[4].color[2] = text_info.color[2];
+
+        vert[5].pos[0] = position_x;
+        vert[5].pos[1] = position_y + glyph_height;
+        vert[5].coord[0] = coord.lower_left.x * uv_adjust;
+        vert[5].coord[1] = coord.top_right.y * uv_adjust;
+        vert[5].coord[2] = font_idx;
+        vert[5].color[0] = text_info.color[0];
+        vert[5].color[1] = text_info.color[1];
+        vert[5].color[2] = text_info.color[2];
+
+        prev_codepoint = codepoint;
+        vert += 6;  // go over the 6 verticies we just wrote
+      }
+    }
+
+    // potentially create buffer on gpu (if we did not have one already)
+    if (!text_vbo_id) {
+      if (auto id = gl_buffer_mgr.Create()) {
+        text_vbo_id = id;
+      } else {
+        Assert(0);
+      }
+    }
+
+    // if no font vao, create one
+    if (!text_vao) {
+      VertexBufferLayout font_vao_layout;
+      font_vao_layout.AddLayoutElementF(2, false, 0);
+      font_vao_layout.AddLayoutElementF(3, false, 0);
+      font_vao_layout.AddLayoutElementF(3, false, 0);
+      if (auto vao_id = vertex_array_mgr.Create(font_vao_layout)) {
+        text_vao = *vao_id;
+      } else {
+        Assert(0);
+      }
+    }
+
+    auto vbo = gl_buffer_mgr.Get(text_vbo_id);
+    if (!vbo) {
       Assert(0);
     }
-  }
+    // send vert data to gpu
+    GLBufferData(*vbo, cached_text_vert_buffer.get(),
+                 cached_text_vert_buffer_size, BufferDataMode::STATIC_DRAW);
 
-  // if no font vao, create one
-  if (!text_vao) {
-    VertexBufferLayout font_vao_layout;
-    font_vao_layout.AddLayoutElementF(2, false, 0);
-    font_vao_layout.AddLayoutElementF(2, false, 0);
-    font_vao_layout.AddLayoutElementF(3, false, 0);
-    if (auto vao_id = vertex_array_mgr.Create(font_vao_layout)) {
-      text_vao = *vao_id;
-    } else {
+    // bind vert buffer
+    auto vao = vertex_array_mgr.Get(text_vao);
+    if (!vao) {
       Assert(0);
     }
+
+    BindVertexBufferToVertexArray(*vao, *vbo, 0);
+    BindVertexArray(*vao);
+    // setup shader
+    auto *font_shader = shader_mgr.Get(font_shader_id);
+    Assert(font_shader);
+    GLCall(glUseProgram((*font_shader).id));
+    auto *font_texture = texture_mgr.Get(
+        QuixotismEngine::GetEngine().font_mgr.Get(font_id)->texture_id);
+    font_texture->BindUnit(0);
+    auto *sampler = sampler_mgr.Get(sampler_id);
+    font_shader->SetUniform("tex_sampler", 0);
+    GLCall(glBindSampler(0, sampler->Id()));
+
+    // draw call
+    // disable depth testing for screen text rendering
+    GLCall(glDepthMask(GL_FALSE));
+    GLCall(glDrawArrays(GL_TRIANGLES, 0, vertex_count));
+    // enable depth testing back again
+    GLCall(glDepthMask(GL_TRUE));
   }
-
-  auto vbo = gl_buffer_mgr.Get(text_vbo_id);
-  if (!vbo) {
-    Assert(0);
-  }
-  // send vert data to gpu
-  GLBufferData(*vbo, cached_text_vert_buffer.get(),
-               cached_text_vert_buffer_size, BufferDataMode::STATIC_DRAW);
-
-  // bind vert buffer
-  auto vao = vertex_array_mgr.Get(text_vao);
-  if (!vao) {
-    Assert(0);
-  }
-
-  BindVertexBufferToVertexArray(*vao, *vbo, 0);
-  BindVertexArray(*vao);
-  // setup shader
-  auto *font_shader = shader_mgr.Get(font_shader_id);
-  Assert(font_shader);
-  GLCall(glUseProgram((*font_shader).id));
-  auto *font_texture = texture_mgr.Get(texture_id);
-  font_texture->BindUnit(0);
-  auto *sampler = sampler_mgr.Get(sampler_id);
-  font_shader->SetUniform("tex_sampler", 0);
-  GLCall(glBindSampler(0, sampler->Id()));
-
-  // draw call
-  // disable depth testing for screen text rendering
-  GLCall(glDepthMask(GL_FALSE));
-  GLCall(glDrawArrays(GL_TRIANGLES, 0, vertex_count));
-  // enable depth testing back again
-  GLCall(glDepthMask(GL_TRUE));
 }
 
 void QuixotismRenderer::PrepareDrawStaticMeshes() {

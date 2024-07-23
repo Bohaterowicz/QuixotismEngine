@@ -184,7 +184,7 @@ void QuixotismEngine::InitTextFonts() {
   if (ttf_file.data) {
     if (auto _font = TTFMakeASCIIFont(ttf_file.data.get(), ttf_file.size);
         _font.has_value()) {
-      font = std::move(*_font);
+      font_mgr.Add(std::move(*_font));
     } else {
       DBG_PRINT("fialed to load font...");
     }
@@ -192,15 +192,15 @@ void QuixotismEngine::InitTextFonts() {
 }
 
 void QuixotismEngine::DrawText(std::string text, r32 x, r32 y, r32 scale,
-                               u32 layer) {
+                               u32 layer, u64 font_id) {
   QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, scale,
-                                            layer);
+                                            layer, font_id);
 }
 
 void QuixotismEngine::DrawText(std::string text, r32 x, r32 y, Vec3 color,
-                               r32 scale, u32 layer) {
+                               r32 scale, u32 layer, u64 font_id) {
   QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, color,
-                                            scale, layer);
+                                            scale, layer, font_id);
 }
 
 }  // namespace quixotism
