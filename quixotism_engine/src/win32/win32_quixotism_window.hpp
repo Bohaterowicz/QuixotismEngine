@@ -33,8 +33,8 @@ class Win32QuixotismWindow {
   void Shutdown() { shutdown_requested = true; }
   [[nodiscard]] bool ShutdownRequested() const { return shutdown_requested; }
 
-  void ProcessWindowMessages(ControllerInput &input);
-  void ProcessMouseMovement(ControllerInput &input);
+  void ProcessWindowMessages(InputState &input);
+  void ProcessMouseMovement(InputState &input);
 
   static constexpr i32 DEFAULT_WINDOW_WIDHT = 800;
   static constexpr i32 DEFAULT_WINDOW_HEIGHT = 600;

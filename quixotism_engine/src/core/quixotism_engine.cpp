@@ -71,7 +71,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   terminal.Init();
 }
 
-void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
+void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
 
   auto& transform = entity_mgr.Get(camera_id)->transform;
@@ -81,22 +81,22 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
   auto movement = Vec3{0.0F};
 
   if (!focused_element) {
-    if (input.up.ended_down) {
+    if (input.key_state_info['Q'].is_down) {
       movement += UP;
     }
-    if (input.down.ended_down) {
+    if (input.key_state_info['E'].is_down) {
       movement += -UP;
     }
-    if (input.forward.ended_down) {
+    if (input.key_state_info['W'].is_down) {
       movement += transform.Forward();
     }
-    if (input.backward.ended_down) {
+    if (input.key_state_info['S'].is_down) {
       movement += -transform.Forward();
     }
-    if (input.right.ended_down) {
+    if (input.key_state_info['D'].is_down) {
       movement += transform.Right();
     }
-    if (input.left.ended_down) {
+    if (input.key_state_info['A'].is_down) {
       movement += -transform.Right();
     }
   } else {
@@ -133,13 +133,13 @@ void QuixotismEngine::UpdateAndRender(ControllerInput& input, r32 delta_t) {
     }
   }
 
-  if (input.bb.half_transition_count && input.bb.ended_down) {
-    input.bb.half_transition_count = 0;
+  if (input.key_state_info['B'].is_down &&
+      input.key_state_info['B'].transition) {
     show_bb = !show_bb;
   }
 
-  if (input.tt.half_transition_count && input.tt.ended_down) {
-    input.tt.half_transition_count = 0;
+  if (input.key_state_info['T'].is_down &&
+      input.key_state_info['T'].transition) {
     DBG_PRINT("Toggle terminal...");
     terminal.ToggleShow();
   }
@@ -195,6 +195,12 @@ void QuixotismEngine::DrawText(std::string text, r32 x, r32 y, r32 scale,
                                u32 layer) {
   QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, scale,
                                             layer);
+}
+
+void QuixotismEngine::DrawText(std::string text, r32 x, r32 y, Vec3 color,
+                               r32 scale, u32 layer) {
+  QuixotismRenderer::GetRenderer().PushText(std::move(text), Vec2{x, y}, color,
+                                            scale, layer);
 }
 
 }  // namespace quixotism

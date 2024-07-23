@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "colors.hpp"
 #include "core/material_manager.hpp"
 #include "core/static_mesh_manager.hpp"
 #include "core/text_input.hpp"
@@ -25,12 +26,24 @@ class Terminal {
   void Show(bool show) { should_show = show; }
   void ToggleShow() { Show(!should_show); }
 
+  void PushLog(std::string &txt, Vec3 color = Color::RED) {
+    text_lines.emplace_back(txt, color);
+    if (text_lines.size() > 9) {
+      text_lines.erase(text_lines.begin());
+    }
+  }
+
   Transform DrawTransform();
 
   StaticMeshId smid = 0;
   MaterialID matid = 0;
 
  private:
+  struct TextInfo {
+    std::string text;
+    Vec3 color;
+  };
+
   VisibilityState visibility_state = VisibilityState::HIDDEN;
   bool should_show = false;
 
@@ -38,7 +51,7 @@ class Terminal {
 
   TextInput input;
 
-  std::vector<std::string> text_lines;
+  std::vector<TextInfo> text_lines;
 
   r32 ease_anim_speed = 1000.f;
   r32 anim_progress = 0.f;

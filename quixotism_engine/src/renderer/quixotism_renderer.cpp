@@ -3,6 +3,7 @@
 #include "GL/glew.h"
 #include "GLM/glm.hpp"
 #include "GLM/gtc/type_ptr.hpp"
+#include "colors.hpp"
 #include "core/quixotism_engine.hpp"
 #include "dbg_print.hpp"
 #include "file_processing/obj_parser/obj_parser.hpp"
@@ -116,9 +117,15 @@ void QuixotismRenderer::CompileTextShader() {
 
 void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale,
                                  u32 layer) {
+  PushText(std::move(text), position, Color::WHITE, scale, layer);
+}
+
+void QuixotismRenderer::PushText(std::string &&text, Vec2 position, Vec3 color,
+                                 r32 scale, u32 layer) {
   TextDrawInfo info;
   info.text = std::move(text);
   info.position = position;
+  info.color = color;
   info.scale = scale;
   info.layer = layer;
   draw_text_queue.push_back(std::move(info));
@@ -127,6 +134,7 @@ void QuixotismRenderer::PushText(std::string &&text, Vec2 position, r32 scale,
 struct GlyphVert {
   r32 pos[2];
   r32 coord[2];
+  r32 color[3];
 };
 
 void QuixotismRenderer::DrawText(u32 layer) {
@@ -147,8 +155,8 @@ void QuixotismRenderer::DrawText(u32 layer) {
   }
 
   // for now we hard code that we use 6 verts per character (quad = 2 triangles)
-  // with 4 floats per vertex (x, y, u, v)
-  static constexpr size_t vertex_size = 4 * sizeof(r32);
+  // with 7 floats per vertex (x, y, u, v, r, g, b)
+  static constexpr size_t vertex_size = 7 * sizeof(r32);
   static constexpr size_t verts_per_triangle = 3;
   size_t triangle_count = char_count * 2;
   size_t vertex_count = triangle_count * verts_per_triangle;
@@ -181,7 +189,7 @@ void QuixotismRenderer::DrawText(u32 layer) {
     r32 screen_scale_x = 2.0f / static_cast<r32>(window_dim.width);
     r32 screen_scale_y = 2.0f / static_cast<r32>(window_dim.height);
 
-    auto space_advance = font.GetSpaceAdvance() * scale_adjust;
+    auto space_advance = font.GetSpaceAdvance() * text_info.scale;
     for (const auto &c : text_info.text) {
       codepoint = c;
       if (codepoint == ' ') {
@@ -210,32 +218,50 @@ void QuixotismRenderer::DrawText(u32 layer) {
       vert[0].pos[1] = position_y;
       vert[0].coord[0] = coord.lower_left.x;
       vert[0].coord[1] = coord.lower_left.y;
+      vert[0].color[0] = text_info.color[0];
+      vert[0].color[1] = text_info.color[1];
+      vert[0].color[2] = text_info.color[2];
 
       vert[1].pos[0] = position_x + glyph_width;
       vert[1].pos[1] = position_y;
       vert[1].coord[0] = coord.top_right.x;
       vert[1].coord[1] = coord.lower_left.y;
+      vert[1].color[0] = text_info.color[0];
+      vert[1].color[1] = text_info.color[1];
+      vert[1].color[2] = text_info.color[2];
 
       vert[2].pos[0] = position_x;
       vert[2].pos[1] = position_y + glyph_height;
       vert[2].coord[0] = coord.lower_left.x;
       vert[2].coord[1] = coord.top_right.y;
+      vert[2].color[0] = text_info.color[0];
+      vert[2].color[1] = text_info.color[1];
+      vert[2].color[2] = text_info.color[2];
 
       // tri2
       vert[3].pos[0] = position_x + glyph_width;
       vert[3].pos[1] = position_y;
       vert[3].coord[0] = coord.top_right.x;
       vert[3].coord[1] = coord.lower_left.y;
+      vert[3].color[0] = text_info.color[0];
+      vert[3].color[1] = text_info.color[1];
+      vert[3].color[2] = text_info.color[2];
 
       vert[4].pos[0] = position_x + glyph_width;
       vert[4].pos[1] = position_y + glyph_height;
       vert[4].coord[0] = coord.top_right.x;
       vert[4].coord[1] = coord.top_right.y;
+      vert[4].color[0] = text_info.color[0];
+      vert[4].color[1] = text_info.color[1];
+      vert[4].color[2] = text_info.color[2];
 
       vert[5].pos[0] = position_x;
       vert[5].pos[1] = position_y + glyph_height;
       vert[5].coord[0] = coord.lower_left.x;
       vert[5].coord[1] = coord.top_right.y;
+      vert[5].color[0] = text_info.color[0];
+      vert[5].color[1] = text_info.color[1];
+      vert[5].color[2] = text_info.color[2];
 
       prev_codepoint = codepoint;
       vert += 6;  // go over the 6 verticies we just wrote
@@ -256,6 +282,7 @@ void QuixotismRenderer::DrawText(u32 layer) {
     VertexBufferLayout font_vao_layout;
     font_vao_layout.AddLayoutElementF(2, false, 0);
     font_vao_layout.AddLayoutElementF(2, false, 0);
+    font_vao_layout.AddLayoutElementF(3, false, 0);
     if (auto vao_id = vertex_array_mgr.Create(font_vao_layout)) {
       text_vao = *vao_id;
     } else {

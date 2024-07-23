@@ -10,15 +10,16 @@ void TextInput::Update(r32 offset, r32 scale) {
   }
 }
 
-void TextInput::ProcessInput(ControllerInput &input) {
-  if (input.enter.half_transition_count > 0 && input.enter.ended_down) {
-    input.enter.half_transition_count = 0;
+void TextInput::ProcessInput(InputState &input) {
+  if (input.key_state_info[KC_RETURN].is_down &&
+      input.key_state_info[KC_RETURN].transition) {
     commit_func(buffer);
     buffer.clear();
   } else {
-    if (input.transition && input.ascii_code != -1) {
-      input.transition = false;
-      buffer.append(1, (char)input.ascii_code);
+    if (KeyState::IsASCII(input.last_key_code) &&
+        input.key_state_info[input.last_key_code].transition &&
+        input.key_state_info[input.last_key_code].is_down) {
+      buffer.append(1, (char)input.last_key_code);
     }
   }
 }

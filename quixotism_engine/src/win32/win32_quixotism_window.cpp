@@ -33,17 +33,10 @@ static bool Win32SetPixelFormat(HWND window) {
   return false;
 }
 
-static void Win32ProcessKeyboardInput(ButtonState &new_state, bool is_down,
-                                      bool transition = true) {
-  new_state.half_transition_count = transition ? 1 : 0;
-  if (new_state.ended_down != is_down) {
-    new_state.ended_down = is_down;
+void Win32QuixotismWindow::ProcessWindowMessages(InputState &input) {
+  for (auto &key : input.key_state_info) {
+    key.transition = false;
   }
-}
-
-void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
-  input.transition = false;
-  input.ascii_code = -1;
   MSG message;
   while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE) == TRUE) {
     switch (message.message) {
@@ -66,6 +59,13 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
         constexpr u32 IS_DOWN_BIT_SHIFT = 31;
         constexpr u32 ALT_KEY_IS_DOWN_SHIFT = 29;
         auto vk_code = static_cast<u32>(message.wParam);
+        bool alt_key_was_down =
+            ((message.lParam & (1 << ALT_KEY_IS_DOWN_SHIFT)) != 0);
+
+        if ((vk_code == VK_ESCAPE) || (vk_code == VK_F4 && alt_key_was_down)) {
+          Shutdown();
+        }
+        auto &key = input.key_state_info[vk_code];
         // 30th bit in LParam indicates if the key was pressed down before
         // (previous state)
         bool was_down = ((message.lParam & (1 << WAS_DOWN_BIT_SHIFT)) != 0);
@@ -73,67 +73,9 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
         // state)
         bool is_down = ((message.lParam & (1 << IS_DOWN_BIT_SHIFT)) == 0);
 
-        bool alt_key_was_down =
-            ((message.lParam & (1 << ALT_KEY_IS_DOWN_SHIFT)) != 0);
-
-        if (vk_code == VK_ESCAPE) {
-          Shutdown();
-        }
-        if (vk_code == VK_F4 && alt_key_was_down) {
-          Shutdown();
-        }
-
-        // If the key was down before, but now isnt, that means that the key got
-        // released, and the other way around This if statment pervents us from
-        // being flooded by key-repeat messages (meaning that a key is being
-        // held down)
-        bool transition = was_down != is_down;
-        if (transition) {
-          if (vk_code == 'C') {
-            if (is_down) {
-              // DBG_PRINT("TOGGLING MOUSE VISIBILITY");
-              /*
-              Win32ProcessKeyboardInput(KeyboardController.Start, is_down);
-              AppState.ToggleCursorHidden();
-              if (AppState.IsCursorHidden()) {
-                ShowCursor(FALSE);
-              } else {
-                ShowCursor(TRUE);
-              }
-              */
-            }
-          }
-          if (vk_code == 'E') {
-            Win32ProcessKeyboardInput(input.up, is_down);
-          }
-          if (vk_code == 'Q') {
-            Win32ProcessKeyboardInput(input.down, is_down);
-          }
-          if (vk_code == 'W') {
-            Win32ProcessKeyboardInput(input.forward, is_down);
-          }
-          if (vk_code == 'S') {
-            Win32ProcessKeyboardInput(input.backward, is_down);
-          }
-          if (vk_code == 'D') {
-            Win32ProcessKeyboardInput(input.right, is_down);
-          }
-          if (vk_code == 'A') {
-            Win32ProcessKeyboardInput(input.left, is_down);
-          }
-        }
-        if (vk_code == 'B') {
-          Win32ProcessKeyboardInput(input.bb, is_down, transition);
-        }
-        if (vk_code == 'T') {
-          Win32ProcessKeyboardInput(input.tt, is_down, transition);
-        }
-        if (vk_code == VK_RETURN) {
-          Win32ProcessKeyboardInput(input.enter, is_down, transition);
-        }
-
-        input.transition = is_down;
-        input.ascii_code = (vk_code >= '!' && vk_code <= '~') ? vk_code : -1;
+        key.is_down = is_down;
+        key.transition = was_down != is_down;
+        input.last_key_code = (KeyCode)vk_code;
       } break;
       default: {
         TranslateMessage(&message);
@@ -143,7 +85,7 @@ void Win32QuixotismWindow::ProcessWindowMessages(ControllerInput &input) {
   }
 }
 
-void Win32QuixotismWindow::ProcessMouseMovement(ControllerInput &input) {
+void Win32QuixotismWindow::ProcessMouseMovement(InputState &input) {
   if (camera_control_mode) {
     POINT mouse_pos = {};
     GetCursorPos(&mouse_pos);

@@ -20,6 +20,7 @@ namespace quixotism {
 struct TextDrawInfo {
   std::string text;
   Vec2 position;
+  Vec3 color;
   r32 scale;
   u32 layer;
 };
@@ -36,6 +37,8 @@ class QuixotismRenderer {
   void ClearRenderTarget();
 
   void PushText(std::string&& text, Vec2 position, r32 scale, u32 layer);
+  void PushText(std::string&& text, Vec2 position, Vec3 color, r32 scale,
+                u32 layer);
   void DrawText(u32 layer);
 
   void PrepareDrawStaticMeshes();

@@ -10,7 +10,7 @@ class GUI_Interactive {
 
   void SetFocus(bool focus);
 
-  virtual void ProcessInput(ControllerInput &input){};
+  virtual void ProcessInput(InputState &input){};
   virtual void Update(r32 offset, r32 scale) = 0;
 
   virtual ~GUI_Interactive() = default;

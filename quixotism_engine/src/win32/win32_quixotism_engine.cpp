@@ -59,9 +59,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   quixotism::WindowDim window_dim{.width = width, .height = height};
   engine.Init(platform_services, window_dim);
 
-  quixotism::ControllerInput input[2] = {};
-  quixotism::ControllerInput *new_input = &input[0];
-  quixotism::ControllerInput *prev_input = &input[1];
+  quixotism::InputState input;
 
   POINT center_pos = {width / 2, height / 2};
   ClientToScreen(quixotism_window.GetHandle(), &center_pos);
@@ -74,13 +72,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
   // Main engine loop, we keep running as long as the window was not requested
   // to close or the engine itself shutdown
   while (!quixotism_window.ShutdownRequested()) {
-    quixotism_window.ProcessWindowMessages(*new_input);
-    quixotism_window.ProcessMouseMovement(*new_input);
-    engine.UpdateAndRender(*new_input, delta_t);
+    quixotism_window.ProcessWindowMessages(input);
+    quixotism_window.ProcessMouseMovement(input);
+    engine.UpdateAndRender(input, delta_t);
     HDC window_dc = GetDC(quixotism_window.GetHandle());
     SwapBuffers(window_dc);
     ReleaseDC(quixotism_window.GetHandle(), window_dc);
-    SwapPointers(&new_input, &prev_input);
 
     i64 end_counter = _Query_perf_counter();
     i64 counter_elapsed = end_counter - start_counter;

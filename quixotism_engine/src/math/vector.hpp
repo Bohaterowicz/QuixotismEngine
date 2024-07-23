@@ -24,9 +24,9 @@ class Vec2 {
     r32 e[2];
   };
 
-  Vec2() : x{0}, y{0} {}
-  Vec2(r32 v) : x{v}, y{v} {}
-  Vec2(r32 _x, r32 _y) : x{_x}, y{_y} {}
+  constexpr Vec2() : x{0}, y{0} {}
+  constexpr Vec2(r32 v) : x{v}, y{v} {}
+  constexpr Vec2(r32 _x, r32 _y) : x{_x}, y{_y} {}
 
   Vec2& operator+=(Vec2 const& other) {
     x += other.x;
@@ -140,10 +140,10 @@ class Vec3 {
     r32 e[3];
   };
 
-  Vec3() : x{0}, y{0}, z{0} {}
-  Vec3(r32 v) : x{v}, y{v}, z{v} {}
-  Vec3(r32 _x, r32 _y, r32 _z) : x{_x}, y{_y}, z{_z} {}
-  Vec3(Vec2 v2, r32 _z) : x{v2.x}, y{v2.y}, z{_z} {}
+  constexpr Vec3() : x{0}, y{0}, z{0} {}
+  constexpr Vec3(r32 v) : x{v}, y{v}, z{v} {}
+  constexpr Vec3(r32 _x, r32 _y, r32 _z) : x{_x}, y{_y}, z{_z} {}
+  constexpr Vec3(Vec2 v2, r32 _z) : x{v2.x}, y{v2.y}, z{_z} {}
 
   Vec3& operator+=(Vec3 const& other) {
     x += other.x;
@@ -218,10 +218,10 @@ class Vec4 {
     r32 e[4];
   };
 
-  Vec4() : x{0}, y{0}, z{0}, w{0} {}
-  Vec4(r32 v) : x{v}, y{v}, z{v}, w{v} {}
-  Vec4(r32 _x, r32 _y, r32 _z, r32 _w) : x{_x}, y{_y}, z{_z}, w{_w} {}
-  Vec4(Vec3 v3, r32 _w) : x{v3.x}, y{v3.y}, z{v3.z}, w{_w} {}
+  constexpr Vec4() : x{0}, y{0}, z{0}, w{0} {}
+  constexpr Vec4(r32 v) : x{v}, y{v}, z{v}, w{v} {}
+  constexpr Vec4(r32 _x, r32 _y, r32 _z, r32 _w) : x{_x}, y{_y}, z{_z}, w{_w} {}
+  constexpr Vec4(Vec3 v3, r32 _w) : x{v3.x}, y{v3.y}, z{v3.z}, w{_w} {}
 
   Vec4& operator+=(Vec4 const& other) {
     x += other.x;

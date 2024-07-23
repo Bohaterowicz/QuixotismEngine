@@ -30,7 +30,7 @@ class QuixotismEngine {
 
   void Init(const PlatformServices& init_services, const WindowDim& dim);
 
-  void UpdateAndRender(ControllerInput& input, r32 delta_t);
+  void UpdateAndRender(InputState& input, r32 delta_t);
 
   void UpdateWindowSize(i32 width, i32 height) { window_dim = {width, height}; }
   WindowDim GetWindowDim() const { return window_dim; }
@@ -38,6 +38,8 @@ class QuixotismEngine {
   EntityId GetCamera() const { return camera_id; }
 
   void DrawText(std::string text, float x, float y, r32 scale, u32 layer = 0);
+  void DrawText(std::string text, r32 x, r32 y, Vec3 color, r32 scale,
+                u32 layer);
 
   void DrawEntities();
 

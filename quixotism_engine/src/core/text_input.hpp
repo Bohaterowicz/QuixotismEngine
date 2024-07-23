@@ -13,7 +13,7 @@ class TextInput : public GUI_Interactive {
 
   void Init(std::function<void(std::string)> func) { commit_func = func; }
 
-  void ProcessInput(ControllerInput &input) override;
+  void ProcessInput(InputState &input) override;
   void Update(r32 offset, r32 scale) override;
 
  private:
