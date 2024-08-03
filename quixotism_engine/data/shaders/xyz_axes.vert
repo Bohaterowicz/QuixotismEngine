@@ -1,13 +1,11 @@
 #version 330 core
 layout(location = 0) in vec3 inPos;
+layout(location = 1) in vec3 inColor;
 uniform mat4 view;
 uniform mat4 projection;
-uniform float scale;
+
+out vec3 Color;
 void main() {
-  mat4 offset;
-  offset[0][0] = 1;
-  offset[1][1] = 1;
-  offset[2][2] = 1;
-  offset[3] = vec4(0.85, -0.9, 0.0, 1.0);
-  gl_Position = offset * projection * view * vec4(inPos * scale, 1.0);
+  gl_Position = projection * ((view * vec4(inPos, 1.0)) + vec4(0, 0, -2, 0));
+  Color = inColor;
 }

@@ -16,10 +16,24 @@ void TextInput::ProcessInput(InputState &input) {
     commit_func(buffer);
     buffer.clear();
   } else {
-    if (KeyState::IsASCII(input.last_key_code) &&
+    if (input.key_state_info[KC_CONTROL].is_down) {
+      return;
+    }
+
+    char c;
+    if (ToCharacter(input.last_key_code, input.key_state_info[KC_SHIFT].is_down,
+                    c) &&
         input.key_state_info[input.last_key_code].transition &&
         input.key_state_info[input.last_key_code].is_down) {
-      buffer.append(1, (char)input.last_key_code);
+      buffer.append(1, c);
+    } else if (input.last_key_code == KC_SPACE &&
+               input.key_state_info[input.last_key_code].transition &&
+               input.key_state_info[input.last_key_code].is_down) {
+      buffer.append(1, ' ');
+    } else if (input.last_key_code == KC_BACK &&
+               input.key_state_info[input.last_key_code].transition &&
+               input.key_state_info[input.last_key_code].is_down) {
+      if (!buffer.empty()) buffer.pop_back();
     }
   }
 }

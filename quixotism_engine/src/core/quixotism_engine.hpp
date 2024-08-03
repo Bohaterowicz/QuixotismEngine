@@ -53,7 +53,7 @@ class QuixotismEngine {
   TextureManager texture_mgr;
   FontManager font_mgr;
 
-  u64 tex_id;
+  u64 tex_id, ctex_id;
 
   bool show_bb = false;
   u32 show_terminal = 0;

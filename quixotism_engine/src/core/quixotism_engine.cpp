@@ -4,6 +4,7 @@
 #include "core/gui_interactive.hpp"
 #include "core/texture.hpp"
 #include "dbg_print.hpp"
+#include "enumerate.hpp"
 #include "file_processing/obj_parser/obj_parser.hpp"
 #include "file_processing/png_parser/png_parser.hpp"
 #include "renderer/quixotism_renderer.hpp"
@@ -32,9 +33,26 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   auto img = ParsePNG(png_data.data.get(), png_data.size);
   if (img) {
     Texture texture{std::move(img.value())};
-    texture.glid = CreateTexture(texture.bitmap, false);
+    texture.glid = CreateTexture(std::get<Bitmap>(texture.bitmap), false);
     tex_id = texture_mgr.Add(std::move(texture));
   }
+
+  CubeBitmap cube_bitmaps;
+  for (auto [i, bitmap] : Enumerate(cube_bitmaps)) {
+    auto png_data = QuixotismEngine::GetEngine().services.read_file(
+        ("D:/QuixotismEngine/quixotism_engine/data/textures/yokohama/" +
+         std::to_string(i) + ".png")
+            .c_str());
+    auto img = ParsePNG(png_data.data.get(), png_data.size);
+    if (img) {
+      bitmap = std::move(img.value());
+    } else {
+      Assert(!"could not load image");
+    }
+  }
+  Texture texture{std::move(cube_bitmaps)};
+  texture.glid = CreateCubeTexture(std::get<CubeBitmap>(texture.bitmap));
+  ctex_id = texture_mgr.Add(std::move(texture));
 
   auto obj_data = QuixotismEngine::GetEngine().services.read_file(
       "D:/QuixotismEngine/quixotism_engine/data/meshes/box.obj");
@@ -79,6 +97,13 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   auto speed = 50.0F;  // m/s
   auto rotation_speed = 1.0F;
   auto movement = Vec3{0.0F};
+
+  if (input.key_state_info['T'].is_down &&
+      input.key_state_info['T'].transition &&
+      input.key_state_info[KC_CONTROL].is_down) {
+    DBG_PRINT("Toggle terminal...");
+    terminal.ToggleShow();
+  }
 
   if (!focused_element) {
     if (input.key_state_info['Q'].is_down) {
@@ -138,17 +163,12 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
     show_bb = !show_bb;
   }
 
-  if (input.key_state_info['T'].is_down &&
-      input.key_state_info['T'].transition) {
-    DBG_PRINT("Toggle terminal...");
-    terminal.ToggleShow();
-  }
-
   terminal.Update(delta_t);
 
   renderer.ClearRenderTarget();
   DrawText("Hello Text!", -0.98, 0.8f, 0.03448);
   DrawEntities();
+  renderer.DrawSkybox();
   renderer.DrawText(0);
   renderer.DrawXYZAxesOverlay();
 

@@ -21,5 +21,6 @@ class GLTexture {
 
 GLTexture CreateTexture(const Bitmap &bitmap, bool r8);
 GLTexture CreateTextureArray(const Bitmap **bitmap, size_t count, bool r8);
+GLTexture CreateCubeTexture(std::array<Bitmap, 6> &bitmaps);
 
 }  // namespace quixotism

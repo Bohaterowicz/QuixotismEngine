@@ -23,7 +23,10 @@ class Terminal {
 
   bool IsVisible() const { return visibility_state != VisibilityState::HIDDEN; }
   bool ShouldShow() const { return should_show; }
-  void Show(bool show) { should_show = show; }
+  void Show(bool show) {
+    should_show = show;
+    input.SetFocus(should_show);
+  }
   void ToggleShow() { Show(!should_show); }
 
   void PushLog(std::string &txt, Vec3 color = Color::RED) {

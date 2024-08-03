@@ -30,7 +30,7 @@ static ShaderID CreateBasicXYZAxesSader(ShaderManager &shader_mgr) {
       "D:/QuixotismEngine/quixotism_engine/data/shaders/xyz_axes.vert");
   shader_spec.emplace_back(
       ShaderStageType::FRAGMENT,
-      "D:/QuixotismEngine/quixotism_engine/data/shaders/basic_line.frag");
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/xyz_axes.frag");
   return shader_mgr.CreateShader("xyz_axes", shader_spec);
 }
 
@@ -86,10 +86,20 @@ QuixotismRenderer::QuixotismRenderer() {
       "D:/QuixotismEngine/quixotism_engine/data/shaders/solid_color.frag");
   shader_mgr.CreateShader("solid_color", shader_spec);
 
+  shader_spec = {};
+  shader_spec.emplace_back(ShaderStageType::VERTEX,
+                           "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                           "skybox.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/skybox.frag");
+  shader_mgr.CreateShader("skybox", shader_spec);
+
   CompileTextShader();
   auto sampler = CreateSampler();
   sampler_id = sampler_mgr.Add(std::move(sampler));
   sampler_id2 = sampler_mgr.Add(CreateSampler2());
+  cube_sampler = sampler_mgr.Add(CreateCubeSampler());
 
   for (auto &font_set : QuixotismEngine::GetEngine().font_mgr) {
     auto [max_width, max_height] = font_set.fonts[4].GetBitmap().GetDim();
@@ -485,6 +495,91 @@ void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
                         GL_UNSIGNED_INT, 0));
 }
 
+void QuixotismRenderer::DrawSkybox() {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto sid = shader_mgr.GetByName("skybox");
+  Assert(sid);
+  auto shader = shader_mgr.Get(sid);
+  if (!shader) {
+    Assert(0);
+  }
+  GLCall(glUseProgram((*shader).id));
+  auto *camera = engine.entity_mgr.Get(engine.GetCamera());
+  shader->SetUniform(
+      "projection",
+      camera->GetComponent<CameraComponent>()->GetProjectionMatrix());
+  shader->SetUniform("view", camera->transform.GetRotationMatrix());
+
+  //
+
+  float skybox_verts[] = {
+      // positions
+      -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
+      1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
+
+      -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f,
+      -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,
+
+      1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f,
+
+      -1.0f, -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f, -1.0f, 1.0f,
+
+      -1.0f, 1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  1.0f,
+      1.0f,  1.0f,  1.0f,  -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f,  -1.0f,
+
+      -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f,
+      1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, 1.0f};
+
+  static GLBufferID skybox_vbo_id = GLBuffer::INVALID_BUFFER_ID;
+  static VertexArrayID skybox_vao_id = VertexArray::INVALID_VAO_ID;
+  static ShaderID skybox_shader_id = Shader::INVALID_SHADER_ID;
+
+  if (!skybox_vbo_id) {
+    if (auto id = gl_buffer_mgr.Create()) {
+      skybox_vbo_id = id;
+    } else {
+      Assert(0);
+    }
+    auto vbo = gl_buffer_mgr.Get(skybox_vbo_id);
+    GLBufferData(*vbo, skybox_verts, sizeof(skybox_verts),
+                 BufferDataMode::STATIC_DRAW);
+    VertexBufferLayout vao_layout;
+    vao_layout.AddLayoutElementF(3, false, 0);
+    if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
+      skybox_vao_id = *vao_id;
+    } else {
+      Assert(0);
+    }
+  }
+
+  Assert(skybox_vao_id && skybox_vbo_id);
+
+  auto vao = vertex_array_mgr.Get(skybox_vao_id);
+  auto vbo = gl_buffer_mgr.Get(skybox_vbo_id);
+  if (!vao || !vbo) {
+    Assert(0);
+  }
+
+  //
+
+  auto skybox_tex = engine.texture_mgr.Get(engine.ctex_id);
+  skybox_tex->glid.BindUnit(0);
+  auto *sampler = sampler_mgr.Get(cube_sampler);
+  shader->SetUniform("skybox", 0);
+  GLCall(glBindSampler(0, sampler->Id()));
+
+  BindVertexArray(*vao);
+  BindVertexBufferToVertexArray(*vao, *vbo, 0);
+
+  // change depth function so depth test passes when values
+  // are equal to depth buffer's content
+  GLCall(glDepthFunc(GL_LEQUAL));
+  GLCall(glDrawArrays(GL_TRIANGLES, 0, 36));
+  GLCall(glDepthFunc(GL_LESS));  // set depth function back to default
+}
+
 static inline std::pair<std::unique_ptr<u8[]>, size_t>
 CreateBoundingBoxVertexBuffer(const BoundingBox &bb) {
   size_t size =
@@ -654,9 +749,10 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
   static GLBufferID axes_vbo_id = GLBuffer::INVALID_BUFFER_ID;
   static VertexArrayID axes_vao_id = VertexArray::INVALID_VAO_ID;
   static ShaderID axes_shader_id = Shader::INVALID_SHADER_ID;
-  static std::array<Vec3, 6> axes_verts{Vec3{0, 0, 0}, Vec3{1, 0, 0},
-                                        Vec3{0, 0, 0}, Vec3{0, 1, 0},
-                                        Vec3{0, 0, 0}, Vec3{0, 0, 1}};
+  static std::array<Vec3, 12> axes_verts{
+      Vec3{0, 0, 0}, Vec3{1, 0, 0}, Vec3{1, 0, 0}, Vec3{1, 0, 0},
+      Vec3{0, 0, 0}, Vec3{0, 1, 0}, Vec3{0, 1, 0}, Vec3{0, 1, 0},
+      Vec3{0, 0, 0}, Vec3{0, 0, 1}, Vec3{0, 0, 1}, Vec3{0, 0, 1}};
 
   if (!axes_vbo_id) {
     axes_shader_id = shader_mgr.GetByName("xyz_axes");
@@ -674,6 +770,7 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
     GLBufferData(*vbo, axes_verts.data(), sizeof(axes_verts),
                  BufferDataMode::STATIC_DRAW);
     VertexBufferLayout vao_layout;
+    vao_layout.AddLayoutElementF(3, false, 0);
     vao_layout.AddLayoutElementF(3, false, 0);
     if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
       axes_vao_id = *vao_id;
@@ -705,15 +802,12 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
   auto &transform = engine.entity_mgr.Get(engine.GetCamera())->transform;
   shader->SetUniform("view", transform.GetRotationMatrix());
   shader->SetUniform("projection", camera->GetProjectionMatrix());
-  shader->SetUniform("scale", 0.05f);
 
   GLCall(glLineWidth(3.0));
-  shader->SetUniform("Color", Vec3{1, 0, 0});
-  GLCall(glDrawArrays(GL_LINES, 0, 2));
-  shader->SetUniform("Color", Vec3{0, 1, 0});
-  GLCall(glDrawArrays(GL_LINES, 2, 2));
-  shader->SetUniform("Color", Vec3{0, 0, 1});
-  GLCall(glDrawArrays(GL_LINES, 4, 2));
+  GLCall(glViewport(0, 0, 100, 100));
+  GLCall(glDrawArrays(GL_LINES, 0, 6));
+  auto dim = QuixotismEngine::GetEngine().GetWindowDim();
+  GLCall(glViewport(0, 0, dim.width, dim.height));
 }
 
 }  // namespace quixotism

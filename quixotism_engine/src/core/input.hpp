@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cctype>
 
 #include "quixotism_c.hpp"
 
@@ -65,24 +66,78 @@ enum KeyCode : u32 {
   KC_HELP = 0x2F,
   // 0x30 - 0x39 -> Number keys (0-9) (ASCII)
   // 0x41 - 0x5A -> Character keys (A-Z) (ASCII)
+  KC_PLUS = 0xBB,
+  KC_MINUS = 0xBD,
 };
+
+constexpr bool ToCharacter(u32 key_code, bool shift, char &c) {
+  if (key_code >= 0x41 && key_code <= 0x5A) {
+    c = shift ? (char)key_code : (char)tolower(key_code);
+    return true;
+  }
+  if (key_code >= 0x30 && key_code <= 0x39) {
+    if (shift) {
+      switch (key_code) {
+        case 0x30:
+          c = ')';
+          break;
+        case 0x31:
+          c = '!';
+          break;
+        case 0x32:
+          c = '@';
+          break;
+        case 0x33:
+          c = '#';
+          break;
+        case 0x34:
+          c = '$';
+          break;
+        case 0x35:
+          c = '%';
+          break;
+        case 0x36:
+          c = '^';
+          break;
+        case 0x37:
+          c = '&';
+          break;
+        case 0x38:
+          c = '*';
+          break;
+        case 0x39:
+          c = '(';
+          break;
+      }
+    } else {
+      c = (char)key_code;
+    }
+    return true;
+  }
+
+  bool result = true;
+  switch (key_code) {
+    case KC_PLUS: {
+      c = shift ? '+' : '=';
+    } break;
+    case KC_MINUS: {
+      c = shift ? '_' : '-';
+    } break;
+    default: {
+      result = false;
+    } break;
+  }
+
+  return result;
+}
 
 struct KeyState {
   KeyState() = default;
   bool is_down = false;     // false=key_up, true=key_down
   bool transition = false;  // false=key_repeat, true=key_changed_state
   u32 key_code;
-
-  static bool IsASCII(u32 key_code) {
-    if ((key_code >= 0x30 && key_code <= 0x39) ||
-        (key_code >= 0x41 && key_code <= 0x5A)) {
-      return true;
-    }
-    return false;
-  }
 };
 
-/*
 constexpr auto key_info_array_init = [] {
   std::array<KeyState, MAX_KEY_STATE_SIZE> arr;
   for (auto idx = 0; idx < MAX_KEY_STATE_SIZE; ++idx) {
@@ -90,12 +145,11 @@ constexpr auto key_info_array_init = [] {
   }
   return arr;
 }();
-*/
 
 struct InputState {
   InputState() = default;
 
-  std::array<KeyState, MAX_KEY_STATE_SIZE> key_state_info;
+  std::array<KeyState, MAX_KEY_STATE_SIZE> key_state_info = key_info_array_init;
   KeyCode last_key_code = KC_INVALID;
   r32 mouse_x_delta = 0.f;
   r32 mouse_y_delta = 0.f;

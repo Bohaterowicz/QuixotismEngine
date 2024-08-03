@@ -74,7 +74,6 @@ void Terminal::Update(r32 delta_t) {
         }
       }
     }
-    input.SetFocus(true);
   } else {
     if (visibility_state == VisibilityState::VISIBILE ||
         visibility_state == VisibilityState::IN_ANIM) {
@@ -91,7 +90,6 @@ void Terminal::Update(r32 delta_t) {
         }
       }
     }
-    input.SetFocus(false);
   }
 
   if (visibility_state != VisibilityState::HIDDEN) {

@@ -20,5 +20,6 @@ class GLSampler {
 
 GLSampler CreateSampler();
 GLSampler CreateSampler2();
+GLSampler CreateCubeSampler();
 
 }  // namespace quixotism

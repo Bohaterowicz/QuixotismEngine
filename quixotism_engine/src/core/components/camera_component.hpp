@@ -30,13 +30,13 @@ class CameraComponent : public Component {
         far_plane{far} {}
 
   Mat4 GetProjectionMatrix() const {
-    Mat4 proj{1.0};
-    auto focal_length = 1 / Tan(fov_y / 2);
-    proj[0].x = focal_length / aspect_ratio;
-    proj[1].y = focal_length;
-    proj[2].z = ((far_plane + near_plane) / (near_plane - far_plane));
-    proj[2].w = -1;
-    proj[3].z = (2 * far_plane * near_plane) / (near_plane - far_plane);
+    Mat4 proj{0.0};
+    auto tan_half_fov_y = Tan(fov_y / 2.0f);
+    proj[0].x = 1.0f / (aspect_ratio * tan_half_fov_y);
+    proj[1].y = 1.0f / tan_half_fov_y;
+    proj[2].z = -((far_plane + near_plane) / (far_plane - near_plane));
+    proj[2].w = -1.0f;
+    proj[3].z = -(2.0f * far_plane * near_plane) / (far_plane - near_plane);
     return proj;
   }
 

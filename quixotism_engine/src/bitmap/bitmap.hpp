@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <expected>
 #include <memory>
 #include <vector>
@@ -7,6 +8,7 @@
 #include "math/vector.hpp"
 #include "quixotism_c.hpp"
 #include "quixotism_error.hpp"
+
 
 namespace quixotism {
 
@@ -50,6 +52,8 @@ class Bitmap {
   BitmapFormat format;
   std::unique_ptr<u8[]> data;
 };
+
+using CubeBitmap = std::array<Bitmap, 6>;
 
 struct BitmapCoord {
   Vec2 lower_left;

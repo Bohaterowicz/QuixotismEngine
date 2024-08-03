@@ -44,6 +44,8 @@ class QuixotismRenderer {
                 u32 layer, FontID font_id);
   void DrawText(u32 layer);
 
+  void DrawSkybox();
+
   void PrepareDrawStaticMeshes();
   void DrawStaticMesh(const StaticMeshId sm_id, const MaterialID mat_id,
                       const Transform& transform);
@@ -66,7 +68,7 @@ class QuixotismRenderer {
   GLBufferID text_vbo_id = 0;
   ShaderID shader_id, font_shader_id;
   SamplerID sampler_id;
-  SamplerID sampler_id2;
+  SamplerID sampler_id2, cube_sampler;
 
   ShaderManager shader_mgr;
 
