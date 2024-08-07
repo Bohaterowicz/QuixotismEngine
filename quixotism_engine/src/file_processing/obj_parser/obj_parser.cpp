@@ -9,7 +9,7 @@ namespace quixotism {
 template <class VEC_TYPE>
 static VEC_TYPE ParseVecDataFromString(const char *&StartP,
                                        i32 MaxPrecision = 6) {
-  VEC_TYPE result;
+  VEC_TYPE result{};
   for (auto &P : result.e)  // NOLINT
   {
     const auto *EndP = StartP;
@@ -61,14 +61,14 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
 }
 
 void UpdateBounds(BoundingBox &bounds, VertexPos &vert) {
-  auto &low = bounds.low;
-  auto &high = bounds.high;
-  low.x = Min(low.x, vert.x);
-  low.y = Min(low.y, vert.y);
-  low.z = Min(low.z, vert.z);
-  high.x = Max(high.x, vert.x);
-  high.y = Max(high.y, vert.y);
-  high.z = Max(high.z, vert.z);
+  auto &min = bounds.min;
+  auto &max = bounds.max;
+  min.x = Min(min.x, vert.x);
+  min.y = Min(min.y, vert.y);
+  min.z = Min(min.z, vert.z);
+  max.x = Max(max.x, vert.x);
+  max.y = Max(max.y, vert.y);
+  max.z = Max(max.z, vert.z);
 }
 
 std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
@@ -121,8 +121,8 @@ std::vector<Mesh> ParseOBJ(const void *ObjFileData, size_t FileSize) {
             auto vert = ParseVecDataFromString<VertexPos>(CurrentP);
             if (first_vert) {
               first_vert = false;
-              CurrentObject.bbox.low = vert;
-              CurrentObject.bbox.high = vert;
+              CurrentObject.bbox.min = vert;
+              CurrentObject.bbox.max = vert;
             } else {
               UpdateBounds(CurrentObject.bbox, vert);
             }

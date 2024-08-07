@@ -48,6 +48,12 @@ using u64 = uint64_t;
 using r32 = float;
 using r64 = double;
 
+#if defined(DEFAULT_HIGH_PRECISION)
+using DefaultMathPrecisionType = r64;
+#else
+using DefaultMathPrecisionType = r32;
+#endif
+
 namespace quixotism {
 
 template <typename T, size_t N>
@@ -82,6 +88,14 @@ inline constexpr u32 FOURCC(const char *String) {
           ((static_cast<u32>(String[1])) << 8) |
           ((static_cast<u32>(String[2])) << 16) |
           ((static_cast<u32>(String[3])) << 24));
+}
+
+template <size_t curr, size_t max>
+void UnrollRaw(auto &&f) {
+    if constexpr (curr < max) {
+        f.template operator()<curr>();
+        UnrollRaw<curr + 1, max>(f);
+    }
 }
 
 }  // namespace quixotism

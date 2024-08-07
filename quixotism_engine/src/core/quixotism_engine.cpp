@@ -11,6 +11,55 @@
 
 namespace quixotism {
 
+struct OBB {
+  Vec3 center = {};
+  Vec3 extents = {};
+  // Orthonormal basis
+  Vec3 axes[3] = {};
+};
+
+// SAT = Seperating Axes Theorem
+static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
+                              const BoundingBox& bb) {
+  Vec3 corners[] = {{bb.min.x, bb.min.y, bb.min.z},
+                    {bb.max.x, bb.min.y, bb.min.z},
+                    {bb.min.x, bb.max.y, bb.min.z},
+                    {bb.min.x, bb.min.y, bb.max.z}};
+
+  UnrollRaw<0, ArrayCount(corners)>(
+      [&]<size_t i>() { corners[i] = (transform * Vec4(corners[i], 1)).xyz; });
+
+  OBB obb = {
+      .axes = {corners[1] - corners[0], corners[2] - corners[0],
+               corners[3] - corners[0]},
+  };
+
+  obb.center = corners[0] + 0.5f * (obb.axes[0] + obb.axes[1] + obb.axes[2]);
+  obb.extents =
+      Vec3{obb.axes[0].Length(), obb.axes[1].Length(), obb.axes[2].Length()};
+  obb.axes[0] = obb.axes[0] / obb.extents.x;
+  obb.axes[1] = obb.axes[1] / obb.extents.y;
+  obb.axes[2] = obb.axes[2] / obb.extents.z;
+  obb.extents *= 0.5f;
+
+  // First test near and far planes of the frustum (along z-axis) (easy)
+  {
+    // When testing near and far planes, we are projecting bb of object onto
+    // z-axis, thus we get the ojects bb center z-value as its projected center
+    auto projected_center = obb.center.z;
+    r32 radius = 0;
+    UnrollRaw<0, 3>(
+        [&]<size_t i>() { radius += Abs(obb.axes[i].z) * obb.extents[i]; });
+
+    r32 extent_far = projected_center - radius;
+    r32 extent_near = projected_center + radius;
+
+    if (extent_far > (-frustum.near_plane) || extent_near < (-frustum.far_plane))
+      return false;
+  }
+  return true;
+}
+
 void QuixotismEngine::Init(const PlatformServices& init_services,
                            const WindowDim& dim) {
   services = init_services;
@@ -25,6 +74,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
   camera_id = entity_mgr.Add(std::move(camera));
   entity_mgr.Get(camera_id)->transform.SetPosition(Vec3{-150, 0, 50});
+  camera_id2 = entity_mgr.Clone(camera_id);
 
   InitTextFonts();
 
@@ -91,7 +141,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
 void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
-
+  rendered_entities_count = 0;
   auto& transform = entity_mgr.Get(camera_id)->transform;
 
   auto speed = 50.0F;  // m/s
@@ -132,7 +182,7 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
     transform.position += (movement.Normalize() * speed * delta_t);
   }
 
-  auto rotation_delta = Vec3{input.mouse_y_delta, input.mouse_x_delta, 0} *
+  auto rotation_delta = Vec3{-input.mouse_y_delta, -input.mouse_x_delta, 0} *
                         rotation_speed * delta_t;
 
   if (rotation_delta.LengthSqr() > 0.0F) {
@@ -168,6 +218,8 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   renderer.ClearRenderTarget();
   DrawText("Hello Text!", -0.98, 0.8f, 0.03448);
   DrawEntities();
+  DrawText("entity draw count: " + std::to_string(rendered_entities_count),
+           -0.98, 0.7f, 0.009);
   renderer.DrawSkybox();
   renderer.DrawText(0);
   renderer.DrawXYZAxesOverlay();
@@ -182,12 +234,24 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
 }
 
 void QuixotismEngine::DrawEntities() {
+  auto camera_id = GetCamera();
+  auto* camera = entity_mgr.GetComponent<CameraComponent>(camera_id);
+  auto& transform = entity_mgr.Get(camera_id)->transform;
+  auto view = transform.GetTransformMatrix();
   QuixotismRenderer::GetRenderer().PrepareDrawStaticMeshes();
   for (auto& entity : entity_mgr) {
     auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
     if (!sm_comp) continue;
-    QuixotismRenderer::GetRenderer().DrawStaticMesh(
-        sm_comp->GetStaticMeshId(), sm_comp->GetMaterialID(), entity.transform);
+
+    auto* sm = static_mesh_mgr.Get(sm_comp->GetStaticMeshId());
+    auto transform = view * entity.transform.GetTransformMatrix();
+    if (SATFrustumCulling(camera->GetFrustumDescription(), transform,
+                          sm->GetMeshData().bbox)) {
+      QuixotismRenderer::GetRenderer().DrawStaticMesh(
+          sm_comp->GetStaticMeshId(), sm_comp->GetMaterialID(),
+          entity.transform);
+      ++rendered_entities_count;
+    }
   }
   if (show_bb) {
     for (auto& entity : entity_mgr) {
@@ -197,6 +261,13 @@ void QuixotismEngine::DrawEntities() {
           sm_comp->GetStaticMeshId(), entity.transform);
     }
   }
+  /*
+  auto* camera2 = entity_mgr.GetComponent<CameraComponent>(camera_id2);
+  auto transform =
+      view * entity_mgr.Get(camera_id)->transform.GetTransformMatrix();
+  QuixotismRenderer::GetRenderer().DrawCameraFrustum(
+      camera2->GetFrustumDescription(), transform);
+      */
 }
 
 void QuixotismEngine::InitTextFonts() {

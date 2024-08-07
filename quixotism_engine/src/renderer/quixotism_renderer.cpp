@@ -39,8 +39,9 @@ QuixotismRenderer::QuixotismRenderer() {
   GLCall(glViewport(0, 0, dim.width, dim.height));
 
   GLCall(glEnable(GL_DEPTH_TEST));
-  // GLCall(glEnable(GL_CULL_FACE));
+  GLCall(glEnable(GL_CULL_FACE));
   GLCall(glEnable(GL_BLEND));
+  GLCall(glEnable(GL_LINE_SMOOTH));
   GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
   GLCall(glCullFace(GL_BACK));
 
@@ -588,77 +589,77 @@ CreateBoundingBoxVertexBuffer(const BoundingBox &bb) {
   auto dst = (r32 *)buffer.get();
 
   // min vert
-  *dst++ = bb.low.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.low.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.min.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.low.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.min.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.low.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.min.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.max.z;
   //
-  *dst++ = bb.high.x;
-  *dst++ = bb.high.y;
-  *dst++ = bb.high.z;
+  *dst++ = bb.max.x;
+  *dst++ = bb.max.y;
+  *dst++ = bb.max.z;
 
   return {std::move(buffer), size};
 }

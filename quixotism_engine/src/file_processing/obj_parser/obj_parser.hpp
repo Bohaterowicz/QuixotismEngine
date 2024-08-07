@@ -19,9 +19,10 @@ struct TriangleIndices {
   std::vector<u32> NormalIdx;
 };
 
+// AABB
 struct BoundingBox {
-  Vec3 low;
-  Vec3 high;
+  Vec3 min;
+  Vec3 max;
 };
 
 struct Mesh {

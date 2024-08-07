@@ -5,7 +5,15 @@
 
 namespace quixotism {
 
-class Mat2 {
+class Matrix {
+ public:
+ protected:
+  Matrix() = default;
+
+ private:
+};
+
+class Mat2 : public Matrix {
  public:
   using Column = Vec2;
   Column columns[2];
@@ -34,9 +42,7 @@ class Mat2 {
   const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
-inline Mat2 operator*(const Mat2 &a, const Mat2 &b) { return a.Dot(b); }
-
-class Mat3 {
+class Mat3 : public Matrix {
  public:
   using Column = Vec3;
   Column columns[3];
@@ -73,9 +79,7 @@ class Mat3 {
   const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
-inline Mat3 operator*(const Mat3 &a, const Mat3 &b) { return a.Dot(b); }
-
-class Mat4 {
+class Mat4 : public Matrix {
  public:
   using Column = Vec4;
   Column columns[4];
@@ -119,6 +123,21 @@ class Mat4 {
   const r32 *DataPtr() const { return columns[0].DataPtr(); }
 };
 
-inline Mat4 operator*(const Mat4 &a, const Mat4 &b) { return a.Dot(b); }
+template <typename T>
+concept MatrixType = std::is_base_of_v<Matrix, T>;
+
+template <MatrixType M>
+inline M operator*(const M &a, const M &b) {
+  return a.Dot(b);
+}
+
+template <VectorType T, MatrixType M>
+inline T operator*(T a, M const &m) {
+  return a.Dot(m);
+}
+template <VectorType T, MatrixType M>
+inline T operator*(M const &m, T a) {
+  return a.Dot(m);
+}
 
 }  // namespace quixotism

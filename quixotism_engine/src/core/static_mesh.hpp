@@ -14,10 +14,12 @@ class StaticMesh {
     vbo_id = other.vbo_id;
     ebo_id = other.ebo_id;
     vao_id = other.vao_id;
+    bb_vbo_id = other.bb_vbo_id;
     mesh = std::move(other.mesh);
     other.vbo_id = 0;
     other.ebo_id = 0;
     other.vao_id = 0;
+    other.bb_vbo_id = 0;
     other.mesh = {};
   }
   StaticMesh(Mesh&& sm) noexcept { mesh = std::move(sm); }
@@ -26,10 +28,12 @@ class StaticMesh {
     vbo_id = other.vbo_id;
     ebo_id = other.ebo_id;
     vao_id = other.vao_id;
+    bb_vbo_id = other.bb_vbo_id;
     mesh = std::move(other.mesh);
     other.vbo_id = 0;
     other.ebo_id = 0;
     other.vao_id = 0;
+    other.bb_vbo_id = 0;
     other.mesh = {};
     return *this;
   }

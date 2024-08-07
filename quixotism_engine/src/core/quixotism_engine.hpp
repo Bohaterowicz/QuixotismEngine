@@ -36,6 +36,7 @@ class QuixotismEngine {
   WindowDim GetWindowDim() const { return window_dim; }
 
   EntityId GetCamera() const { return camera_id; }
+  EntityId GetCamera2() const { return camera_id2; }
 
   void DrawText(std::string text, float x, float y, r32 scale, u32 layer = 0,
                 u64 font_id = 0);
@@ -59,12 +60,14 @@ class QuixotismEngine {
   u32 show_terminal = 0;
   Terminal terminal;
 
+  size_t rendered_entities_count;
+
  private:
   QuixotismEngine() {}
 
   GUI_Interactive* focused_element;
 
-  EntityId camera_id, box_id;
+  EntityId camera_id, camera_id2, box_id;
 
   void InitTextFonts();
 

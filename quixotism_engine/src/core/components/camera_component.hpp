@@ -11,6 +11,13 @@ enum class ProjectionType {
   PERSPECTIVE,
 };
 
+struct FrustumDesc {
+  r32 near_plane;
+  r32 far_plane;
+  r32 near_half_width;
+  r32 near_half_height;
+};
+
 class CameraComponent : public Component {
  public:
   CameraComponent()
@@ -38,6 +45,13 @@ class CameraComponent : public Component {
     proj[2].w = -1.0f;
     proj[3].z = -(2.0f * far_plane * near_plane) / (far_plane - near_plane);
     return proj;
+  }
+
+  FrustumDesc GetFrustumDescription() const {
+    FrustumDesc frustum{};
+    frustum.far_plane = far_plane;
+    frustum.near_plane = near_plane;
+    return frustum;
   }
 
   static ComponentType Type() { return ComponentType::CAMERA; }
