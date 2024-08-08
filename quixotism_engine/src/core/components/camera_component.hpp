@@ -48,9 +48,12 @@ class CameraComponent : public Component {
   }
 
   FrustumDesc GetFrustumDescription() const {
+    auto tan_half_fov_y = Tan(fov_y / 2.0f);
     FrustumDesc frustum{};
     frustum.far_plane = far_plane;
     frustum.near_plane = near_plane;
+    frustum.near_half_width = aspect_ratio * near_plane * tan_half_fov_y;
+    frustum.near_half_height = near_plane * tan_half_fov_y;
     return frustum;
   }
 

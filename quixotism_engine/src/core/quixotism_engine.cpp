@@ -18,7 +18,20 @@ struct OBB {
   Vec3 axes[3] = {};
 };
 
-// SAT = Seperating Axes Theorem
+/*
+ SAT = Seperating Axes Theorem
+
+ NOTE: note about interpratation of the dot-product; the dot-product can be
+ interpreted as projecting one vector onto another. To get correct projection of
+ the vector with correct magnitude one has to properly scale the projection
+ (https://en.wikipedia.org/wiki/Vector_projection), fortunetly often we do not
+ care about the correct magnitudes, just the relative sizes of the projections
+ to each other, thus we omit the "magnitude proper projection", we only perform
+ the dot products (this works since all operations are relative to the current
+ axis we are investigating, thus while the magnitudes of the projections are not
+ correct, they are incorrect by the same amount, thus not being a problem when
+ comparing to eachother)
+*/
 static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
                               const BoundingBox& bb) {
   Vec3 corners[] = {{bb.min.x, bb.min.y, bb.min.z},
@@ -26,7 +39,7 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
                     {bb.min.x, bb.max.y, bb.min.z},
                     {bb.min.x, bb.min.y, bb.max.z}};
 
-  UnrollRaw<0, ArrayCount(corners)>(
+  Unroll<0, ArrayCount(corners)>(
       [&]<size_t i>() { corners[i] = (transform * Vec4(corners[i], 1)).xyz; });
 
   OBB obb = {
@@ -48,14 +61,86 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
     // z-axis, thus we get the ojects bb center z-value as its projected center
     auto projected_center = obb.center.z;
     r32 radius = 0;
-    UnrollRaw<0, 3>(
+    Unroll<0, 3>(
         [&]<size_t i>() { radius += Abs(obb.axes[i].z) * obb.extents[i]; });
 
     r32 extent_far = projected_center - radius;
     r32 extent_near = projected_center + radius;
 
-    if (extent_far > (-frustum.near_plane) || extent_near < (-frustum.far_plane))
+    if (extent_far > (-frustum.near_plane) ||
+        extent_near < (-frustum.far_plane))
       return false;
+  }
+
+  // Now test frustum sides (top, down, left, right)
+  {
+    const Vec3 frustum_normals[] = {
+        {0.0, frustum.near_plane, frustum.near_half_height},   // top plane
+        {0.0, -frustum.near_plane, frustum.near_half_height},  // bottom plane
+        {frustum.near_plane, 0.0, frustum.near_half_width},    // right plane
+        {-frustum.near_plane, 0.0, frustum.near_half_width}};  // left plane
+
+    for (i32 i = 0; i < ArrayCount(frustum_normals); ++i) {
+      const auto& investigated_axis = frustum_normals[i];
+      // Projected X-axis onto the currently investigated axis,
+      // the result is just the x-component of the investigated
+      // axis since the projection is: InvestigatedAxis (dot)
+      // X-axis, where X-axis is (1, 0, 0), thus only the x
+      // component of the investigated axis will be the result
+      // of the "projection" (x * 1 + y * 0 + z * 0).
+      // We use the Abs value since we only care about the projected (relative)
+      // magnitude, not direction (this way we can reuse this computation)
+      r32 axis_projected_x_axis = Abs(investigated_axis.x);
+      // Same as explained above.
+      r32 axis_projected_y_axis = Abs(investigated_axis.y);
+      // Same as above, but this time we care about the direction (thus no Abs)
+      r32 axis_projected_z_axis = investigated_axis.z;
+
+      // Compute the radius of the OBB by summing the projected axes onto the
+      // investigated axis
+      r32 radius = 0;
+      Unroll<0, 3>([&]<size_t j>() {
+        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents.e[j];
+      });
+      auto projected_center = investigated_axis.Dot(obb.center);
+      r32 extent_far = projected_center - radius;
+      r32 extent_near = projected_center + radius;
+
+      // Now we have to compute which bounds of the frustum to use (near or
+      // far), we do this by first computing the projected bounds of the near
+      // plane:
+
+      // axis_projected_{x/y}_axis give us projected magnitude of the unit axis
+      // onto the investigated axis, we multiply those by the half width and
+      // height accordingly such that we get a magnitude relative size of the
+      // near plane projected onto the investigated axis
+      const auto near_plane_projected_size =
+          frustum.near_half_width * axis_projected_x_axis +
+          frustum.near_half_height * axis_projected_y_axis;
+
+      // projected near-plane z size onto the investigated axis
+      const auto near_z_projected_size =
+          -frustum.near_plane * axis_projected_z_axis;
+
+      auto near_plane_projected_low_bound =
+          near_z_projected_size - near_plane_projected_size;
+      auto near_plane_projected_high_bound =
+          near_z_projected_size + near_plane_projected_size;
+
+      if (near_plane_projected_low_bound < 0.0) {
+        near_plane_projected_low_bound *=
+            (frustum.far_plane / frustum.near_plane);
+      }
+      if (near_plane_projected_high_bound < 0.0) {
+        near_plane_projected_high_bound *=
+            (frustum.far_plane / frustum.near_plane);
+      }
+
+      if (extent_far > near_plane_projected_high_bound ||
+          extent_near < near_plane_projected_low_bound) {
+        return false;
+      }
+    }
   }
   return true;
 }
@@ -261,13 +346,6 @@ void QuixotismEngine::DrawEntities() {
           sm_comp->GetStaticMeshId(), entity.transform);
     }
   }
-  /*
-  auto* camera2 = entity_mgr.GetComponent<CameraComponent>(camera_id2);
-  auto transform =
-      view * entity_mgr.Get(camera_id)->transform.GetTransformMatrix();
-  QuixotismRenderer::GetRenderer().DrawCameraFrustum(
-      camera2->GetFrustumDescription(), transform);
-      */
 }
 
 void QuixotismEngine::InitTextFonts() {

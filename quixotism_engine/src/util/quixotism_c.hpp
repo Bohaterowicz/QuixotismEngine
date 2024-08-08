@@ -91,11 +91,11 @@ inline constexpr u32 FOURCC(const char *String) {
 }
 
 template <size_t curr, size_t max>
-void UnrollRaw(auto &&f) {
-    if constexpr (curr < max) {
-        f.template operator()<curr>();
-        UnrollRaw<curr + 1, max>(f);
-    }
+void Unroll(auto &&f) {
+  if constexpr (curr < max) {
+    f.template operator()<curr>();
+    Unroll<curr + 1, max>(f);
+  }
 }
 
 }  // namespace quixotism
