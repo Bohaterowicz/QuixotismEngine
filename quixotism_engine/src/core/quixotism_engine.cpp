@@ -18,6 +18,56 @@ struct OBB {
   Vec3 axes[3] = {};
 };
 
+// Helper function which compues the SAT bound overlaps between the frustum and
+// the OBB on a given axis
+// Returns true when bounds DO NOT overlap, false if they overlap
+static inline bool ComputeFrustumBoundOverlap(r32 min_bound, r32 max_bound,
+                                              const FrustumDesc& frustum,
+                                              r32 x_axis, r32 y_axis,
+                                              r32 z_axis) {
+  // Now we have to compute which bounds of the frustum to use (near or
+  // far), we do this by first computing the projected bounds of the near
+  // plane:
+
+  // {x/y}_axis give us projected magnitude of the unit axis
+  // onto the investigated axis, we multiply those by the half width and
+  // height accordingly such that we get a magnitude relative size of the
+  // near plane projected onto the investigated axis
+  const auto near_plane_projected_size =
+      frustum.near_half_width * x_axis + frustum.near_half_height * y_axis;
+
+  // projected near-plane z size onto the investigated axis
+  const auto near_z_projected_size = -frustum.near_plane * z_axis;
+
+  // first assume that the projected frustum bounds are based on the
+  // projected near-plane (near_z_projected_size is projected z-axis
+  // multiplied by near plane). We add/subtract the projected near plane
+  // size to get the bounds.
+  auto frustum_low_bound = near_z_projected_size - near_plane_projected_size;
+  auto frustum_high_bound = near_z_projected_size + near_plane_projected_size;
+
+  // if low bound value is less than 0, it means that the axis is oriented
+  // such that the low bound is defined by the far-plane, thus we multiply
+  // the bound by far_plane/near_plane which algebriacally cancels the
+  // near_plane multiplication from above and multiplies the bound by the
+  // far plane.
+  if (frustum_low_bound < 0.0) {
+    frustum_low_bound *= (frustum.far_plane / frustum.near_plane);
+  }
+
+  // same as above, with the difference that the high bound being bigger
+  // than zero means that the high bound is defiend by the far plane.
+  if (frustum_high_bound > 0.0) {
+    frustum_high_bound *= (frustum.far_plane / frustum.near_plane);
+  }
+
+  if (min_bound > frustum_high_bound || max_bound < frustum_low_bound) {
+    return true;
+  }
+
+  return false;
+}
+
 /*
  SAT = Seperating Axes Theorem
 
@@ -30,7 +80,7 @@ struct OBB {
  the dot products (this works since all operations are relative to the current
  axis we are investigating, thus while the magnitudes of the projections are not
  correct, they are incorrect by the same amount, thus not being a problem when
- comparing to eachother)
+ compared to eachother)
 */
 static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
                               const BoundingBox& bb) {
@@ -64,11 +114,10 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
     Unroll<0, 3>(
         [&]<size_t i>() { radius += Abs(obb.axes[i].z) * obb.extents[i]; });
 
-    r32 extent_far = projected_center - radius;
-    r32 extent_near = projected_center + radius;
+    r32 extent_min = projected_center - radius;
+    r32 extent_max = projected_center + radius;
 
-    if (extent_far > (-frustum.near_plane) ||
-        extent_near < (-frustum.far_plane))
+    if (extent_min > (-frustum.near_plane) || extent_max < (-frustum.far_plane))
       return false;
   }
 
@@ -103,45 +152,148 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
         radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents.e[j];
       });
       auto projected_center = investigated_axis.Dot(obb.center);
-      r32 extent_far = projected_center - radius;
-      r32 extent_near = projected_center + radius;
+      r32 extent_min = projected_center - radius;
+      r32 extent_max = projected_center + radius;
 
-      // Now we have to compute which bounds of the frustum to use (near or
-      // far), we do this by first computing the projected bounds of the near
-      // plane:
-
-      // axis_projected_{x/y}_axis give us projected magnitude of the unit axis
-      // onto the investigated axis, we multiply those by the half width and
-      // height accordingly such that we get a magnitude relative size of the
-      // near plane projected onto the investigated axis
-      const auto near_plane_projected_size =
-          frustum.near_half_width * axis_projected_x_axis +
-          frustum.near_half_height * axis_projected_y_axis;
-
-      // projected near-plane z size onto the investigated axis
-      const auto near_z_projected_size =
-          -frustum.near_plane * axis_projected_z_axis;
-
-      auto near_plane_projected_low_bound =
-          near_z_projected_size - near_plane_projected_size;
-      auto near_plane_projected_high_bound =
-          near_z_projected_size + near_plane_projected_size;
-
-      if (near_plane_projected_low_bound < 0.0) {
-        near_plane_projected_low_bound *=
-            (frustum.far_plane / frustum.near_plane);
-      }
-      if (near_plane_projected_high_bound < 0.0) {
-        near_plane_projected_high_bound *=
-            (frustum.far_plane / frustum.near_plane);
-      }
-
-      if (extent_far > near_plane_projected_high_bound ||
-          extent_near < near_plane_projected_low_bound) {
+      if (ComputeFrustumBoundOverlap(
+              extent_min, extent_max, frustum, axis_projected_x_axis,
+              axis_projected_y_axis, axis_projected_z_axis)) {
         return false;
       }
     }
   }
+
+  // Now test the OBB axis. Much of this code is identical to the frustum normal
+  // culling above, thus a lot of the comments are ommited here, read the code
+  // above for more explanations
+  {
+    for (i32 i = 0; i < ArrayCount(obb.axes); ++i) {
+      const auto& investigated_axis = obb.axes[i];
+
+      r32 axis_projected_x_axis = Abs(investigated_axis.x);
+      r32 axis_projected_y_axis = Abs(investigated_axis.y);
+      r32 axis_projected_z_axis = investigated_axis.z;
+
+      // since all axis in OBB are orthogonal to eachoter, only the OBB axis
+      // which we are currently investigating will have any length when
+      // projected onto the axis, thus we can only use the extent of the axis we
+      // are investigating, and ignore summing the other axis, as they would
+      // always be 0
+      r32 radius = obb.extents[i];
+      auto projected_center = investigated_axis.Dot(obb.center);
+      r32 extent_min = projected_center - radius;
+      r32 extent_max = projected_center + radius;
+
+      if (ComputeFrustumBoundOverlap(
+              extent_min, extent_max, frustum, axis_projected_x_axis,
+              axis_projected_y_axis, axis_projected_z_axis)) {
+        return false;
+      }
+    }
+  }
+
+  // Now test the cross products axis
+
+  // Test cross product between frustum right axis (x-axis) and OBBs axis
+  // x-axis (cross) obb.axis = (1, 0, 0) X (x,y,z) = (0, -z, y)
+  {
+    for (i32 i = 0; i < ArrayCount(obb.axes); ++i) {
+      const auto& investigated_axis = Vec3{0.0, -obb.axes[0].z, obb.axes[0].y};
+
+      // as computed above, x component is always 0
+      r32 axis_projected_x_axis = 0;
+      r32 axis_projected_y_axis = Abs(investigated_axis.y);
+      r32 axis_projected_z_axis = investigated_axis.z;
+
+      r32 radius = 0;
+      Unroll<0, 3>([&]<size_t j>() {
+        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+      });
+
+      auto projected_center = investigated_axis.Dot(obb.center);
+      r32 extent_min = projected_center - radius;
+      r32 extent_max = projected_center + radius;
+
+      if (ComputeFrustumBoundOverlap(
+              extent_min, extent_max, frustum, axis_projected_x_axis,
+              axis_projected_y_axis, axis_projected_z_axis)) {
+        return false;
+      }
+    }
+  }
+
+  // Test cross product between frustum up axis (y-axis) and OBBs axis
+  // y-axis (cross) obb.axis = (0, 1, 0) X (x,y,z) = (z, 0, -x)
+  {
+    for (i32 i = 0; i < ArrayCount(obb.axes); ++i) {
+      const auto& investigated_axis = Vec3{obb.axes[0].z, 0, -obb.axes[0].x};
+
+      // as computed above, x component is always 0
+      r32 axis_projected_x_axis = Abs(investigated_axis.x);
+      r32 axis_projected_y_axis = 0;
+      r32 axis_projected_z_axis = investigated_axis.z;
+
+      r32 radius = 0;
+      Unroll<0, 3>([&]<size_t j>() {
+        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+      });
+
+      auto projected_center = investigated_axis.Dot(obb.center);
+      r32 extent_min = projected_center - radius;
+      r32 extent_max = projected_center + radius;
+
+      if (ComputeFrustumBoundOverlap(
+              extent_min, extent_max, frustum, axis_projected_x_axis,
+              axis_projected_y_axis, axis_projected_z_axis)) {
+        return false;
+      }
+    }
+  }
+
+  // Test cross product between frustum edges and OBBs axis
+  {
+    for (i32 edge_idx = 0; edge_idx < ArrayCount(obb.axes); ++edge_idx) {
+      const Vec3 frustum_planes[] = {
+          Cross({-frustum.near_half_width, 0.0, frustum.near_plane},
+                obb.axes[edge_idx]),  // left plane
+          Cross({frustum.near_half_width, 0.0, frustum.near_plane},
+                obb.axes[edge_idx]),  // right plane
+          Cross({0.0, frustum.near_half_height, frustum.near_plane},
+                obb.axes[edge_idx]),  // top plane
+          Cross({0.0, -frustum.near_half_height, frustum.near_plane},
+                obb.axes[edge_idx])  // bottom plane
+      };
+      for (i32 i = 0; i < ArrayCount(frustum_planes); ++i) {
+        const auto& investigated_axis = frustum_planes[i];
+        r32 axis_projected_x_axis = Abs(investigated_axis.x);
+        r32 axis_projected_y_axis = Abs(investigated_axis.y);
+        r32 axis_projected_z_axis = investigated_axis.z;
+
+        if (axis_projected_x_axis < qepsilon &&
+            axis_projected_y_axis < qepsilon &&
+            Abs(axis_projected_z_axis) < qepsilon) {
+          continue;
+        }
+
+        r32 radius = 0;
+        Unroll<0, 3>([&]<size_t j>() {
+          radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+        });
+
+        auto projected_center = investigated_axis.Dot(obb.center);
+        r32 extent_min = projected_center - radius;
+        r32 extent_max = projected_center + radius;
+
+        if (ComputeFrustumBoundOverlap(
+                extent_min, extent_max, frustum, axis_projected_x_axis,
+                axis_projected_y_axis, axis_projected_z_axis)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  // No intersection
   return true;
 }
 
