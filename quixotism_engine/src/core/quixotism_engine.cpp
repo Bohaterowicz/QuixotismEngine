@@ -149,9 +149,9 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
       // investigated axis
       r32 radius = 0;
       Unroll<0, 3>([&]<size_t j>() {
-        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents.e[j];
+        radius += Abs(investigated_axis * obb.axes[j]) * obb.extents.e[j];
       });
-      auto projected_center = investigated_axis.Dot(obb.center);
+      auto projected_center = investigated_axis * obb.center;
       r32 extent_min = projected_center - radius;
       r32 extent_max = projected_center + radius;
 
@@ -180,7 +180,7 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
       // are investigating, and ignore summing the other axis, as they would
       // always be 0
       r32 radius = obb.extents[i];
-      auto projected_center = investigated_axis.Dot(obb.center);
+      auto projected_center = investigated_axis * obb.center;
       r32 extent_min = projected_center - radius;
       r32 extent_max = projected_center + radius;
 
@@ -207,10 +207,10 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
 
       r32 radius = 0;
       Unroll<0, 3>([&]<size_t j>() {
-        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+        radius += Abs(investigated_axis * obb.axes[j]) * obb.extents[j];
       });
 
-      auto projected_center = investigated_axis.Dot(obb.center);
+      auto projected_center = investigated_axis * obb.center;
       r32 extent_min = projected_center - radius;
       r32 extent_max = projected_center + radius;
 
@@ -235,10 +235,10 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
 
       r32 radius = 0;
       Unroll<0, 3>([&]<size_t j>() {
-        radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+        radius += Abs(investigated_axis * obb.axes[j]) * obb.extents[j];
       });
 
-      auto projected_center = investigated_axis.Dot(obb.center);
+      auto projected_center = investigated_axis * obb.center;
       r32 extent_min = projected_center - radius;
       r32 extent_max = projected_center + radius;
 
@@ -254,13 +254,13 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
   {
     for (i32 edge_idx = 0; edge_idx < ArrayCount(obb.axes); ++edge_idx) {
       const Vec3 frustum_planes[] = {
-          Cross({-frustum.near_half_width, 0.0, frustum.near_plane},
+          Cross(Vec3{-frustum.near_half_width, 0.0, frustum.near_plane},
                 obb.axes[edge_idx]),  // left plane
-          Cross({frustum.near_half_width, 0.0, frustum.near_plane},
+          Cross(Vec3{frustum.near_half_width, 0.0, frustum.near_plane},
                 obb.axes[edge_idx]),  // right plane
-          Cross({0.0, frustum.near_half_height, frustum.near_plane},
+          Cross(Vec3{0.0, frustum.near_half_height, frustum.near_plane},
                 obb.axes[edge_idx]),  // top plane
-          Cross({0.0, -frustum.near_half_height, frustum.near_plane},
+          Cross(Vec3{0.0, -frustum.near_half_height, frustum.near_plane},
                 obb.axes[edge_idx])  // bottom plane
       };
       for (i32 i = 0; i < ArrayCount(frustum_planes); ++i) {
@@ -277,10 +277,10 @@ static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
 
         r32 radius = 0;
         Unroll<0, 3>([&]<size_t j>() {
-          radius += Abs(investigated_axis.Dot(obb.axes[j])) * obb.extents[j];
+          radius += Abs(investigated_axis * obb.axes[j]) * obb.extents[j];
         });
 
-        auto projected_center = investigated_axis.Dot(obb.center);
+        auto projected_center = investigated_axis * obb.center;
         r32 extent_min = projected_center - radius;
         r32 extent_max = projected_center + radius;
 

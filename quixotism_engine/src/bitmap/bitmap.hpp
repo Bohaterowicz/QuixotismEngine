@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "math/vector.hpp"
+#include "math/vector_type.hpp"
 #include "quixotism_c.hpp"
 #include "quixotism_error.hpp"
 

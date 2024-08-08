@@ -1,5 +1,7 @@
 #pragma once
 
+#include <immintrin.h>
+
 #include <cmath>
 
 #include "quixotism_c.hpp"
@@ -94,10 +96,10 @@ class Vec2 : public Vector {
   ScalarType Length() const { return sqrtf(x * x + y * y); }
   ScalarType LengthSqr() const { return x * x + y * y; }
 
-  ScalarType Dot(Vec2 const& other) const { return x * other.x + y * other.y; }
-  Vec2 Dot(Mat2 const& other) const;
-
-  Vec2& Normalize();
+  Vec2& Normalize() {
+    auto len = Length();
+    return *this /= len;
+  }
 
   ScalarType* DataPtr() { return &e[0]; }
   const ScalarType* DataPtr() const { return &e[0]; }
@@ -235,12 +237,10 @@ class Vec3 : public Vector {
   ScalarType Length() const { return sqrtf(x * x + y * y + z * z); }
   ScalarType LengthSqr() const { return x * x + y * y + z * z; }
 
-  ScalarType Dot(Vec3 const& other) const {
-    return x * other.x + y * other.y + z * other.z;
+  Vec3& Normalize() {
+    auto len = Length();
+    return *this /= len;
   }
-  Vec3 Dot(Mat3 const& other) const;
-
-  Vec3& Normalize();
 
   ScalarType* DataPtr() { return &e[0]; }
   const ScalarType* DataPtr() const { return &e[0]; }
@@ -306,6 +306,7 @@ class Vec4 : public Vector {
       ScalarType x, y, z, w;
     };
     ScalarType e[4];
+    __m128 v;
 
     Vec2SwizzleWrapper<0, 0> xx;
     Vec2SwizzleWrapper<0, 1> xy;
@@ -443,12 +444,10 @@ class Vec4 : public Vector {
   ScalarType Length() const { return sqrtf(x * x + y * y + z * z + w * w); }
   ScalarType LengthSqr() const { return x * x + y * y + z * z + w * w; }
 
-  ScalarType Dot(Vec4 const& other) const {
-    return x * other.x + y * other.y + z * other.z + w * other.w;
+  Vec4& Normalize() {
+    auto len = Length();
+    return *this /= len;
   }
-  Vec4 Dot(Mat4 const& other) const;
-
-  Vec4& Normalize();
 
   ScalarType* DataPtr() { return &e[0]; }
   const ScalarType* DataPtr() const { return &e[0]; }

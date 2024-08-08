@@ -1,8 +1,8 @@
 #pragma once
 
 #include "basic.hpp"
-#include "linear_alg.hpp"
-#include "matrix.hpp"
+#include "linalg.hpp"
+#include "matrix_type.hpp"
 #include "quaternion.hpp"
 #include "trigonometry.hpp"
-#include "vector.hpp"
+#include "vector_type.hpp"

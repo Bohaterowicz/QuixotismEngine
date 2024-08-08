@@ -1,6 +1,6 @@
 #pragma once
 
-#include "matrix.hpp"
+#include "matrix_type.hpp"
 
 namespace quixotism {
 

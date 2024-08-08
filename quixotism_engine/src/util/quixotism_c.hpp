@@ -6,18 +6,28 @@
 #define COMPILER_MSVC 0
 #endif
 
-#if !defined(COMPILER_LLVM)
-#define COMPILER_LLVM 0
+#if !defined(COMPILER_GCC)
+#define COMPILER_GCC 0
 #endif
 
-#if !COMPILER_MSVC && !COMPILER_LLVM
+#if !COMPILER_MSVC && !COMPILER_GCC
 #if _MSC_VER
 #undef COMPILER_MSVC
 #define COMPILER_MSVC 1
+#elif __GNUC__
+#undef COMPILER_GCC
+#define COMPILER_GCC 1
 #else
-#undef COMPILER_LLVM
-#define COMPILER_LLVM 1
+#error Unsupported (or unrecognized) compiler error...
 #endif
+#endif
+
+#if COMPILER_MSVC
+#define FORCE_INLINE inline __forceinline
+#elif COMPILER_GCC
+#define FORCE_INLINE inline __attribute__((always_inline))
+#else
+#error Unsupported (or unrecognized) compiler error...
 #endif
 
 #ifndef NDEBUG
@@ -91,7 +101,7 @@ inline constexpr u32 FOURCC(const char *String) {
 }
 
 template <size_t curr, size_t max>
-void Unroll(auto &&f) {
+FORCE_INLINE constexpr void Unroll(auto &&f) {
   if constexpr (curr < max) {
     f.template operator()<curr>();
     Unroll<curr + 1, max>(f);
