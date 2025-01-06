@@ -8,6 +8,7 @@
 #include "core/static_mesh_manager.hpp"
 #include "core/transform.hpp"
 #include "gl_buffer_manager.hpp"
+#include "gl_framebuffer.hpp"
 #include "gl_sampler_manager.hpp"
 #include "gl_texture.hpp"
 #include "gl_texture_manager.hpp"
@@ -36,7 +37,7 @@ class QuixotismRenderer {
     return renderer;
   }
 
-  void ClearRenderTarget();
+  void ClearFramebuffer();
 
   void PushText(std::string&& text, Vec2 position, r32 scale, u32 layer,
                 FontID font_id);
@@ -48,29 +49,41 @@ class QuixotismRenderer {
 
   void PrepareDrawStaticMeshes();
   void DrawStaticMesh(const StaticMeshId sm_id, const MaterialID mat_id,
-                      const Transform& transform);
+                      const Transform& transform, bool selected = false);
 
   void MakeDrawableStaticMesh(StaticMeshId id);
   void MakeDrawableStaticMesh2(StaticMeshId id, VertexArrayID vao_id);
 
   void DrawXYZAxesOverlay();
 
-  void DrawBoundingBox(const StaticMeshId sm_id, const Transform& transform);
+  void DrawAABB(const StaticMeshId sm_id, const Transform& transform);
   void DrawTerminal(const StaticMeshId sm_id, const MaterialID mat_id,
                     const Transform& transform);
 
   void ClearTextBuffer() { draw_text_queue.clear(); }
+
+  void BindScreenFramebuffer();
+
+  void CreateScreenQuad(StaticMesh& mesh);
+  void DrawToScreenQuad(const StaticMesh& mesh);
+
+  void InitOffscreenFramebuffer();
+  void DrawOutline();
 
   VertexArrayManager vertex_array_mgr;
   GLBufferManager gl_buffer_mgr;
 
   VertexArrayID vao_id = 0, text_vao = 0;
   GLBufferID text_vbo_id = 0;
-  ShaderID shader_id, font_shader_id;
+  ShaderID shader_id, font_shader_id, screen_quad_shader_id;
   SamplerID sampler_id;
   SamplerID sampler_id2, cube_sampler;
 
   ShaderManager shader_mgr;
+  GLTextureManager texture_mgr;
+  GLSamplerManager sampler_mgr;
+
+  Framebuffer offscreen_fbo;
 
  private:
   QuixotismRenderer();
@@ -81,9 +94,6 @@ class QuixotismRenderer {
 
   std::unique_ptr<u8[]> cached_text_vert_buffer;
   size_t cached_text_vert_buffer_size = 0;
-
-  GLTextureManager texture_mgr;
-  GLSamplerManager sampler_mgr;
 };
 
 }  // namespace quixotism

@@ -15,6 +15,7 @@ class Material {
   [[no_discard]] u32 GetShaderId() const { return shader_id; }
 
   TextureID diffuse = 0;
+  TextureID specular = 0;
 
  private:
   ShaderID shader_id = 0;

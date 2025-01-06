@@ -1,5 +1,7 @@
 #include "win32_quixotism_window.hpp"
 
+#include <Windowsx.h>
+
 #include "dbg_print.hpp"
 #include "win32_quixotism_opengl.hpp"
 
@@ -40,6 +42,18 @@ void Win32QuixotismWindow::ProcessWindowMessages(InputState &input) {
   MSG message;
   while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE) == TRUE) {
     switch (message.message) {
+      case WM_LBUTTONDOWN: {
+        auto &key = input.key_state_info[KC_LBUTTON];
+        key.mouse_pos.x = GET_X_LPARAM(message.lParam);
+        key.mouse_pos.y = GET_Y_LPARAM(message.lParam);
+        key.transition = key.is_down != (message.wParam & 0x0001);
+        key.is_down = message.wParam & 0x0001;
+      } break;
+      case WM_LBUTTONUP: {
+        auto &key = input.key_state_info[KC_LBUTTON];
+        key.transition = key.is_down;
+        key.is_down = false;
+      } break;
       case WM_RBUTTONDOWN: {
         camera_control_mode = true;
         i32 center_x = width / 2;

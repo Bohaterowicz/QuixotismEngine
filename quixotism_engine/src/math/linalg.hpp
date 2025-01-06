@@ -9,16 +9,22 @@ namespace quixotism {
 inline r32 Dot(const Vec2 &a, const Vec2 &b) { return a.x * b.x + a.y * b.y; }
 
 inline r32 operator*(const Vec2 &a, const Vec2 &b) { return Dot(a, b); }
+inline Vec2 operator/(const r32 s, const Vec2 &v) { return Vec2{ s/v.x, s/v.y}; }
+inline Vec2 operator/(Vec2 v, const r32 s) { return v /= s; }
 
 inline r32 Dot(const Vec3 &a, const Vec3 &b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
 }
+inline Vec3 operator/(const r32 s, const Vec3 &v) { return Vec3{ s/v.x, s/v.y, s/v.z}; }
+inline Vec3 operator/(Vec3 v, const r32 s) { return v /= s; }
 
 inline r32 operator*(const Vec3 &a, const Vec3 &b) { return Dot(a, b); }
 
 inline r32 Dot(const Vec4 &a, const Vec4 &b) {
   return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 }
+inline Vec4 operator/(const r32 s, const Vec4 &v) { return Vec4{ s/v.x, s/v.y, s/v.z, s/v.w}; }
+inline Vec4 operator/(Vec4 v, const r32 s) { return v /= s; }
 
 inline r32 operator*(const Vec4 &a, const Vec4 &b) { return Dot(a, b); }
 

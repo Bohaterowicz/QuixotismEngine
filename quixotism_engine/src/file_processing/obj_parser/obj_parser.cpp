@@ -60,7 +60,7 @@ static void ParseFaceIndices(TriangleIndices &Indices, i32 PosIdxOffset,
   }
 }
 
-void UpdateBounds(BoundingBox &bounds, VertexPos &vert) {
+void UpdateBounds(AABB &bounds, VertexPos &vert) {
   auto &min = bounds.min;
   auto &max = bounds.max;
   min.x = Min(min.x, vert.x);

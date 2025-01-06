@@ -96,7 +96,7 @@ Bitmap::Bitmap(u32 _width, u32 _height, BitmapFormat _format)
   PackedBitmap packed_font;
   packed_font.bitmap =
       Bitmap{current_bitmap_dimension, current_bitmap_dimension,
-             Bitmap::BitmapFormat::R8};
+             BitmapFormat::R8};
   packed_font.coords.resize(bitmaps.size());
 
   u32 current_height = padding, current_width = 0;

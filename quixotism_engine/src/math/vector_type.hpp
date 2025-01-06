@@ -32,7 +32,7 @@ class Vec2 : public Vector {
   template <int x, int y>
   struct Vec2SwizzleWrapper {
     // implicit conversion to Vec2
-    operator Vec2() { return Vec2(arr[x], arr[y]); }
+    operator Vec2() const { return Vec2(arr[x], arr[y]); }
     // support assignments from Vec2
     Vec2SwizzleWrapper& operator=(const Vec2& vec) {
       arr[x] = vec.x;
@@ -114,7 +114,7 @@ class Vec3 : public Vector {
   template <int x, int y>
   struct Vec2SwizzleWrapper {
     // implicit conversion to Vec2
-    operator Vec2() { return Vec2(arr[x], arr[y]); }
+    operator Vec2() const { return Vec2(arr[x], arr[y]); }
     // support assignments from Vec2
     Vec2SwizzleWrapper& operator=(const Vec2& vec) {
       arr[x] = vec.x;
@@ -129,7 +129,7 @@ class Vec3 : public Vector {
   template <int x, int y, int z>
   struct Vec3SwizzleWrapper {
     // implicit conversion to Vec3
-    operator Vec3() { return Vec3(arr[x], arr[y], arr[z]); }
+    operator Vec3() const { return Vec3(arr[x], arr[y], arr[z]); }
     // support assignments from Vec3
     Vec3SwizzleWrapper& operator=(const Vec3& vec) {
       arr[x] = vec.x;
@@ -255,7 +255,7 @@ class Vec4 : public Vector {
   template <int x, int y>
   struct Vec2SwizzleWrapper {
     // implicit conversion to Vec2
-    operator Vec2() { return Vec2(arr[x], arr[y]); }
+    operator Vec2() const { return Vec2(arr[x], arr[y]); }
     // support assignments from Vec2
     Vec2SwizzleWrapper& operator=(const Vec2& vec) {
       arr[x] = vec.x;
@@ -270,7 +270,7 @@ class Vec4 : public Vector {
   template <int x, int y, int z>
   struct Vec3SwizzleWrapper {
     // implicit conversion to Vec3
-    operator Vec3() { return Vec3(arr[x], arr[y], arr[z]); }
+    operator Vec3() const { return Vec3(arr[x], arr[y], arr[z]); }
     // support assignments from Vec3
     Vec3SwizzleWrapper& operator=(const Vec3& vec) {
       arr[x] = vec.x;
@@ -286,7 +286,7 @@ class Vec4 : public Vector {
   template <int x, int y, int z, int w>
   struct Vec4SwizzleWrapper {
     // implicit conversion to Vec4
-    operator Vec4() { return Vec4(arr[x], arr[y], arr[z], arr[w]); }
+    operator Vec4() const { return Vec4(arr[x], arr[y], arr[z], arr[w]); }
     // support assignments from Vec4
     Vec4SwizzleWrapper& operator=(const Vec4& vec) {
       arr[x] = vec.x;

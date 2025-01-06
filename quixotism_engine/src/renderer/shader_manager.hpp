@@ -17,6 +17,7 @@ namespace quixotism {
 enum class ShaderStageType {
   VERTEX,
   FRAGMENT,
+  COMPUTE,
 };
 
 using StageSpec = std::pair<ShaderStageType, std::string>;

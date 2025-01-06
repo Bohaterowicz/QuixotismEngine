@@ -3,7 +3,9 @@
 #include <array>
 #include <cctype>
 
+#include "math/qmath.hpp"
 #include "quixotism_c.hpp"
+
 
 namespace quixotism {
 constexpr size_t MAX_KEY_STATE_SIZE = 0xFF;
@@ -136,6 +138,7 @@ struct KeyState {
   bool is_down = false;     // false=key_up, true=key_down
   bool transition = false;  // false=key_repeat, true=key_changed_state
   u32 key_code;
+  Vec2 mouse_pos;
 };
 
 constexpr auto key_info_array_init = [] {

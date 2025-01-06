@@ -54,13 +54,16 @@ class QuixotismEngine {
   TextureManager texture_mgr;
   FontManager font_mgr;
 
-  u64 tex_id, ctex_id;
+  u64 tex_id, stex_id, ctex_id;
 
   bool show_bb = false;
   u32 show_terminal = 0;
   Terminal terminal;
 
   size_t rendered_entities_count;
+  EntityId selected_entities = 0;
+
+  StaticMesh screen_quad_mesh;
 
  private:
   QuixotismEngine() {}

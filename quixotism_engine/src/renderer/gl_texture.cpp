@@ -10,6 +10,56 @@ namespace quixotism {
 
 void GLTexture::BindUnit(u32 unit) { GLCall(glBindTextureUnit(unit, id)); }
 
+GLTexture::~GLTexture() { GLCall(glDeleteTextures(1, &id)); }
+
+static inline bool Use3DAllocator(TextureType type) {
+  switch (type) {
+    case TextureType::TEXTURE_2D:
+    case TextureType::TEXTURE_CUBE_MAP:
+      return false;
+    default:
+      return true;
+  }
+}
+
+static inline void AllocateImmutableStorage(const u32 id,
+                                            const TextureDesc &desc) {
+  if (Use3DAllocator(desc.type)) {
+    GLCall(glTextureStorage3D(id, 1, desc.format, desc.width, desc.height,
+                              desc.count));
+  } else {
+    GLCall(glTextureStorage2D(id, desc.mip_levels, desc.format, desc.width,
+                              desc.height));
+    GLCall(glGenerateTextureMipmap(id));
+  }
+}
+
+GLTexture CreateTexture(const TextureDesc &desc) {
+  u32 id = 0;
+  GLCall(glCreateTextures(desc.type, 1, &id));
+  if (!id) Assert(0);
+  AllocateImmutableStorage(id, desc);
+  GLTexture tex{id};
+  return tex;
+}
+
+GLTexture CreateTexture2D(const Bitmap &bitmap) {
+  TextureDesc desc;
+  desc.type = TextureType::TEXTURE_2D;
+  desc.format = bitmap.GetBitmapFormat();
+  desc.width = bitmap.GetWidth();
+  desc.height = bitmap.GetHeight();
+  desc.mip_levels = 6;
+  auto tex = CreateTexture(desc);
+  Assert(tex.Id());
+  GLCall(
+      glTextureSubImage2D(tex.Id(), 0, 0, 0, desc.width, desc.height,
+                          desc.format == BitmapFormat::RGBA8 ? GL_RGBA : GL_RED,
+                          GL_UNSIGNED_BYTE, bitmap.GetBitmapPtr()));
+  GLCall(glGenerateTextureMipmap(tex.Id()));
+  return tex;
+}
+
 GLTexture CreateCubeTexture(CubeBitmap &bitmaps) {
   u32 id = 0;
   auto [width, height] = bitmaps[0].GetDim();

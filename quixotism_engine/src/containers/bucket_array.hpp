@@ -45,13 +45,6 @@ class BucketArray {
     }
   }
 
-  IdType Clone(const IdType id) {
-    auto* element = Get(id);
-    if (!element) return INVALID_ID;
-    auto cloned = *element;
-    return Add(std::move(cloned));
-  }
-
   void Remove(const IdType id) {
     if (Exists(id)) {
       elements[id] = {};

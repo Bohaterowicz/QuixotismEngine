@@ -14,6 +14,8 @@ static u32 GLShaderStageType(ShaderStageType stage) {
       return GL_VERTEX_SHADER;
     case ShaderStageType::FRAGMENT:
       return GL_FRAGMENT_SHADER;
+    case ShaderStageType::COMPUTE:
+      return GL_COMPUTE_SHADER;
     default:
       Assert(0);
   }

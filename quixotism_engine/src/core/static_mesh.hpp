@@ -20,7 +20,7 @@ class StaticMesh {
     other.ebo_id = 0;
     other.vao_id = 0;
     other.bb_vbo_id = 0;
-    other.mesh = {};
+    other.mesh = Mesh{};
   }
   StaticMesh(Mesh&& sm) noexcept { mesh = std::move(sm); }
 
@@ -34,7 +34,7 @@ class StaticMesh {
     other.ebo_id = 0;
     other.vao_id = 0;
     other.bb_vbo_id = 0;
-    other.mesh = {};
+    other.mesh = Mesh{};
     return *this;
   }
 

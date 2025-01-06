@@ -673,7 +673,7 @@ std::expected<Bitmap, BitmapError> ParsePNG(void *data, size_t size) {
         }
       }
 
-      Bitmap png_bitmap{ihdr->width, ihdr->height, Bitmap::BitmapFormat::RGBA8};
+      Bitmap png_bitmap{ihdr->width, ihdr->height, BitmapFormat::RGBA8};
       ApplyFilterReconstruction(uncompressed_data, png_bitmap);
 
       return png_bitmap;

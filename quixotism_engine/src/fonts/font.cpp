@@ -20,7 +20,7 @@ static std::expected<std::pair<Bitmap, i32>, ParseFontError> GetGlyphFromFont(
     return std::unexpected(ParseFontError{});
   }
 
-  Bitmap glyph{(u32)width, (u32)height, Bitmap::BitmapFormat::R8};
+  Bitmap glyph{(u32)width, (u32)height, BitmapFormat::R8};
   u8 *source = stbtt_bitmap;
   u8 *dest_row = glyph.GetBitmapWritePtr() + ((height - 1) * width);
   for (i32 y = 0; y < height; ++y) {

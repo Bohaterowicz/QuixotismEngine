@@ -42,6 +42,7 @@ QuixotismRenderer::QuixotismRenderer() {
   GLCall(glEnable(GL_CULL_FACE));
   GLCall(glEnable(GL_BLEND));
   GLCall(glEnable(GL_LINE_SMOOTH));
+  GLCall(glEnable(GL_STENCIL_TEST));
   GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
   GLCall(glCullFace(GL_BACK));
 
@@ -96,6 +97,15 @@ QuixotismRenderer::QuixotismRenderer() {
       "D:/QuixotismEngine/quixotism_engine/data/shaders/skybox.frag");
   shader_mgr.CreateShader("skybox", shader_spec);
 
+  shader_spec = {};
+  shader_spec.emplace_back(ShaderStageType::VERTEX,
+                           "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                           "screen_quad.vert");
+  shader_spec.emplace_back(
+      ShaderStageType::FRAGMENT,
+      "D:/QuixotismEngine/quixotism_engine/data/shaders/screen_quad.frag");
+  screen_quad_shader_id = shader_mgr.CreateShader("screen_quad", shader_spec);
+
   CompileTextShader();
   auto sampler = CreateSampler();
   sampler_id = sampler_mgr.Add(std::move(sampler));
@@ -110,8 +120,7 @@ QuixotismRenderer::QuixotismRenderer() {
     for (u32 idx = 0; idx < (ArrayCount(FontSet::font_sizes) - 1); ++idx) {
       auto &font = font_set.fonts[idx];
       auto &bitmap = font.GetBitmap();
-      Bitmap tmp_bitmap{(u32)max_width, (u32)max_height,
-                        Bitmap::BitmapFormat::R8};
+      Bitmap tmp_bitmap{(u32)max_width, (u32)max_height, BitmapFormat::R8};
       CopyBitmap(bitmap, tmp_bitmap);
       bitmap_arr[idx] = std::move(tmp_bitmap);
       bitmap_ptr_arr[idx] = &bitmap_arr[idx];
@@ -123,9 +132,155 @@ QuixotismRenderer::QuixotismRenderer() {
   }
 }
 
-void QuixotismRenderer::ClearRenderTarget() {
+void QuixotismRenderer::DrawOutline() {
+  auto &engine = QuixotismEngine::GetEngine();
+  auto dim = engine.GetWindowDim();
+  static ShaderID jfa_init_shader_id = 0;
+  static ShaderID jfa_shader_id = 0;
+  static ShaderID outline_shader_id = 0;
+  static u64 tex1 = 0;
+  static u64 tex2 = 0;
+  static Framebuffer fb;
+  static Framebuffer fb2;
+  if (!jfa_init_shader_id) {
+    ShaderStageSpec shader_spec;
+    shader_spec.emplace_back(ShaderStageType::VERTEX,
+                             "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                             "compute/jfa_init.vert");
+    shader_spec.emplace_back(ShaderStageType::FRAGMENT,
+                             "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                             "compute/jfa_init.frag");
+    jfa_init_shader_id = shader_mgr.CreateShader("jfa_init", shader_spec);
+    shader_spec = {};
+    shader_spec.emplace_back(ShaderStageType::COMPUTE,
+                             "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                             "compute/jfa.glsl");
+    jfa_shader_id = shader_mgr.CreateShader("jfa", shader_spec);
+    shader_spec = {};
+    shader_spec.emplace_back(ShaderStageType::VERTEX,
+                             "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                             "compute/jfa_init.vert");
+    shader_spec.emplace_back(ShaderStageType::FRAGMENT,
+                             "D:/QuixotismEngine/quixotism_engine/data/shaders/"
+                             "compute/jfa_outline.frag");
+    outline_shader_id = shader_mgr.CreateShader("outline", shader_spec);
+
+    FramebufferDesc fbo_desc;
+    auto ds_id = offscreen_fbo.attachments[1]
+                     .second;  // hardcoded for now because I am lazy...
+    TextureDesc tex_desc;
+    tex_desc.type = TextureType::TEXTURE_2D;
+    tex_desc.format = BitmapFormat::RG32F;
+    tex_desc.width = dim.width;
+    tex_desc.height = dim.height;
+    tex_desc.mip_levels = 1;
+    tex1 = texture_mgr.CreateTexture(tex_desc);
+    tex2 = texture_mgr.CreateTexture(tex_desc);
+    fbo_desc.attachments.emplace_back(AttachmentType::COLOR0, tex1);
+    fbo_desc.attachments.emplace_back(AttachmentType::DEPTH_STENCIL, ds_id);
+    fb = std::move(CreateFramebuffer(fbo_desc));
+  }
+
+  fb.Bind();
+  GLCall(glClearColor(-1.0F, -1.0F, -1.0F, 1.0F));
+  GLCall(glClear(GL_COLOR_BUFFER_BIT));
+  GLCall(glDisable(GL_DEPTH_TEST));
+  GLCall(glEnable(GL_STENCIL_TEST));
+  GLCall(glStencilFunc(GL_EQUAL, 1, 0xFF));
+  GLCall(glStencilMask(0x00));
+  auto jfa_init_shader = shader_mgr.Get(jfa_init_shader_id);
+  GLCall(glUseProgram((*jfa_init_shader).id));
+  BindVertexBufferToVertexArray(
+      *vertex_array_mgr.Get(engine.screen_quad_mesh.vao_id),
+      *gl_buffer_mgr.Get(engine.screen_quad_mesh.vbo_id), 0);
+  BindVertexArray(*vertex_array_mgr.Get(engine.screen_quad_mesh.vao_id));
+  GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+
+  auto jfa_shader = shader_mgr.Get(jfa_shader_id);
+  auto read_tex = texture_mgr.Get(tex1)->Id();
+  auto write_tex = texture_mgr.Get(tex2)->Id();
+  GLCall(glUseProgram((*jfa_shader).id));
+  i32 step_size = 8;
+  while (step_size >= 1) {
+    jfa_shader->SetUniform("step_size", step_size);
+    GLCall(glBindImageTexture(0, read_tex, 0, GL_FALSE, 0, GL_READ_ONLY,
+                              GL_RG32F));
+    GLCall(glBindImageTexture(1, write_tex, 0, GL_FALSE, 0, GL_WRITE_ONLY,
+                              GL_RG32F));
+    GLCall(glDispatchCompute(dim.width, dim.height, 1));
+    GLCall(glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT));
+    auto tmp = read_tex;
+    read_tex = write_tex;
+    write_tex = tmp;
+    step_size /= 2;
+  }
+  offscreen_fbo.Bind();
+  GLCall(glStencilFunc(GL_EQUAL, 0, 0xFF));
+  BindVertexBufferToVertexArray(
+      *vertex_array_mgr.Get(engine.screen_quad_mesh.vao_id),
+      *gl_buffer_mgr.Get(engine.screen_quad_mesh.vbo_id), 0);
+  BindVertexArray(*vertex_array_mgr.Get(engine.screen_quad_mesh.vao_id));
+  auto outline_shader = shader_mgr.Get(outline_shader_id);
+  GLCall(glUseProgram((*outline_shader).id));
+  GLCall(glBindTextureUnit(0, read_tex));
+  outline_shader->SetUniform("jfa_texture", 0);
+  GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+  GLCall(glClearColor(0.4F, 0.4F, 0.4F, 1.0F));
+  GLCall(glStencilMask(0xFF));
+  GLCall(glDisable(GL_STENCIL_TEST));
+  GLCall(glEnable(GL_DEPTH_TEST));
+}
+
+void QuixotismRenderer::BindScreenFramebuffer() {
+  GLCall(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+void QuixotismRenderer::ClearFramebuffer() {
+  glClearStencil(0);
   GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
                  GL_STENCIL_BUFFER_BIT));
+}
+
+void QuixotismRenderer::InitOffscreenFramebuffer() {
+  auto &engine = QuixotismEngine::GetEngine();
+  static bool init = true;
+  if (init) {
+    auto dim = engine.GetWindowDim();
+    FramebufferDesc fbo_desc;
+    TextureDesc tex_desc;
+    tex_desc.type = TextureType::TEXTURE_2D;
+    tex_desc.format = BitmapFormat::RGBA8;
+    tex_desc.width = dim.width;
+    tex_desc.height = dim.height;
+    tex_desc.mip_levels = 1;
+    auto color_tex_id = texture_mgr.CreateTexture(tex_desc);
+    tex_desc.format = BitmapFormat::DEPTH24_STENCIL8;
+    auto depth_stencil_tex_id = texture_mgr.CreateTexture(tex_desc);
+    fbo_desc.attachments.emplace_back(AttachmentType::COLOR0, color_tex_id);
+    fbo_desc.attachments.emplace_back(AttachmentType::DEPTH_STENCIL,
+                                      depth_stencil_tex_id);
+    offscreen_fbo = CreateFramebuffer(fbo_desc);
+    init = false;
+  }
+}
+
+void QuixotismRenderer::DrawToScreenQuad(const StaticMesh &mesh) {
+  auto &engine = QuixotismEngine::GetEngine();
+  GLCall(glDisable(GL_DEPTH_TEST));
+  auto sq_shader = shader_mgr.Get(screen_quad_shader_id);
+  GLCall(glUseProgram((*sq_shader).id));
+  BindVertexBufferToVertexArray(*vertex_array_mgr.Get(mesh.vao_id),
+                                *gl_buffer_mgr.Get(mesh.vbo_id), 0);
+  BindVertexArray(*vertex_array_mgr.Get(mesh.vao_id));
+  auto color_id = offscreen_fbo.attachments[0]
+                      .second;  // hardcoded for now because I am lazy...
+  auto screen_tex = texture_mgr.Get(color_id);
+  screen_tex->BindUnit(0);
+  auto *sampler = sampler_mgr.Get(sampler_id2);
+  sq_shader->SetUniform("screenTexture", 0);
+  GLCall(glBindSampler(0, sampler->Id()));
+  GLCall(glDrawArrays(GL_TRIANGLES, 0, 6));
+  GLCall(glEnable(GL_DEPTH_TEST));
 }
 
 void QuixotismRenderer::CompileTextShader() {
@@ -414,8 +569,8 @@ void QuixotismRenderer::DrawTerminal(const StaticMeshId sm_id,
   GLCall(glDepthMask(GL_TRUE));
 }
 
-void QuixotismRenderer::DrawBoundingBox(const StaticMeshId sm_id,
-                                        const Transform &transform) {
+void QuixotismRenderer::DrawAABB(const StaticMeshId sm_id,
+                                 const Transform &transform) {
   static VertexArrayID bb_vao_id = VertexArray::INVALID_VAO_ID;
   static ShaderID bb_shader_id = Shader::INVALID_SHADER_ID;
   auto &engine = QuixotismEngine::GetEngine();
@@ -464,7 +619,8 @@ void QuixotismRenderer::DrawBoundingBox(const StaticMeshId sm_id,
 
 void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
                                        const MaterialID mat_id,
-                                       const Transform &transform) {
+                                       const Transform &transform,
+                                       bool selected) {
   auto &engine = QuixotismEngine::GetEngine();
   auto *sm = engine.static_mesh_mgr.Get(sm_id);
   auto *mat = engine.material_mgr.Get(mat_id);
@@ -476,9 +632,12 @@ void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
   }
 
   auto diffuse_tex = engine.texture_mgr.Get(mat->diffuse);
+  auto specular_tex = engine.texture_mgr.Get(mat->specular);
   diffuse_tex->glid.BindUnit(0);
+  specular_tex->glid.BindUnit(1);
   auto *sampler = sampler_mgr.Get(sampler_id2);
   shader->SetUniform("diffuse_tex", 0);
+  shader->SetUniform("specular_tex", 1);
   GLCall(glBindSampler(0, sampler->Id()));
 
   shader->SetUniform("model", transform.GetTransformMatrix());
@@ -491,9 +650,16 @@ void QuixotismRenderer::DrawStaticMesh(const StaticMeshId sm_id,
   }
   BindVertexArray(*vao);
   BindVertexBufferToVertexArray(*vao, *vbo, *ebo, 0);
+
+  if (selected) {
+    GLCall(glEnable(GL_STENCIL_TEST));
+    GLCall(glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE));
+    GLCall(glStencilFunc(GL_ALWAYS, 1, 0xFF));
+  }
   GLCall(glDrawElements(GL_TRIANGLES,
                         sm->GetMeshData().VertexTriangleIndicies.PosIdx.size(),
                         GL_UNSIGNED_INT, 0));
+  GLCall(glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP));
 }
 
 void QuixotismRenderer::DrawSkybox() {
@@ -513,7 +679,7 @@ void QuixotismRenderer::DrawSkybox() {
 
   //
 
-  float skybox_verts[] = {
+  static float skybox_verts[] = {
       // positions
       -1.0f, 1.0f,  -1.0f, -1.0f, -1.0f, -1.0f, 1.0f,  -1.0f, -1.0f,
       1.0f,  -1.0f, -1.0f, 1.0f,  1.0f,  -1.0f, -1.0f, 1.0f,  -1.0f,
@@ -581,8 +747,8 @@ void QuixotismRenderer::DrawSkybox() {
   GLCall(glDepthFunc(GL_LESS));  // set depth function back to default
 }
 
-static inline std::pair<std::unique_ptr<u8[]>, size_t>
-CreateBoundingBoxVertexBuffer(const BoundingBox &bb) {
+static inline std::pair<std::unique_ptr<u8[]>, size_t> CreateAABBVertexBuffer(
+    const AABB &bb) {
   size_t size =
       18 * 3 * sizeof(r32);  // bounding box has 8 verts, each has 3 r32s
   auto buffer = std::make_unique<u8[]>(size);
@@ -729,7 +895,7 @@ void QuixotismRenderer::MakeDrawableStaticMesh(StaticMeshId id) {
   auto index_buffer = GenerateSerialIndexBuffer(vertex_count);
   size_t index_buffer_size = vertex_count * sizeof(u32);
 
-  auto [bb_buffer, bb_buffer_size] = CreateBoundingBoxVertexBuffer(mesh.bbox);
+  auto [bb_buffer, bb_buffer_size] = CreateAABBVertexBuffer(mesh.bbox);
 
   auto vbo_buf = gl_buffer_mgr.Get(sm_mesh->vbo_id);
   auto ebo_buf = gl_buffer_mgr.Get(sm_mesh->ebo_id);
@@ -809,6 +975,34 @@ void QuixotismRenderer::DrawXYZAxesOverlay() {
   GLCall(glDrawArrays(GL_LINES, 0, 6));
   auto dim = QuixotismEngine::GetEngine().GetWindowDim();
   GLCall(glViewport(0, 0, dim.width, dim.height));
+}
+
+void QuixotismRenderer::CreateScreenQuad(StaticMesh &mesh) {
+  r32 quadVertices[] = {-1.0f, 1.0f, 0.0f, 1.0f,  -1.0f, -1.0f,
+                        0.0f,  0.0f, 1.0f, -1.0f, 1.0f,  0.0f,
+
+                        -1.0f, 1.0f, 0.0f, 1.0f,  1.0f,  -1.0f,
+                        1.0f,  0.0f, 1.0f, 1.0f,  1.0f,  1.0f};
+
+  auto vbo_id = gl_buffer_mgr.Create();
+  if (vbo_id) {
+    mesh.vbo_id = vbo_id;
+  } else {
+    Assert(0);
+  }
+
+  VertexBufferLayout vao_layout;
+  vao_layout.AddLayoutElementF(2, false, 0);
+  vao_layout.AddLayoutElementF(2, false, 0);
+  if (auto vao_id = vertex_array_mgr.Create(vao_layout)) {
+    mesh.vao_id = *vao_id;
+  } else {
+    Assert(0);
+  }
+
+  auto vbo = gl_buffer_mgr.Get(vbo_id);
+  GLBufferData(*vbo, quadVertices, sizeof(quadVertices),
+               BufferDataMode::STATIC_DRAW);
 }
 
 }  // namespace quixotism

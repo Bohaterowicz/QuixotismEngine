@@ -9,20 +9,22 @@
 #include "quixotism_c.hpp"
 #include "quixotism_error.hpp"
 
-
 namespace quixotism {
 
 class BitmapError : public QError {};
 
+enum BitmapFormat {
+  UNSPECIFIED = 0,
+  R8 = 0x8229,
+  RGB8 = 0x8051,
+  RGBA8 = 0x8058,
+  RG32F = 0x8230,
+  RG8 = 0x822B,
+  DEPTH24_STENCIL8 = 0x88F0,
+};
+
 class Bitmap {
  public:
-  enum class BitmapFormat : u8 {
-    UNSPECIFIED,
-    R8 = 1,
-    RGB8 = 2,
-    RGBA8 = 3,
-  };
-
   static i32 FormatChannelCount(BitmapFormat format);
   static i32 FormatBytesPerPixel(BitmapFormat format);
 
@@ -45,6 +47,8 @@ class Bitmap {
   std::pair<i32, i32> GetDim() const { return {width, height}; }
   u32 GetWidth() const { return width; }
   u32 GetHeight() const { return height; }
+
+  BitmapFormat GetBitmapFormat() const { return format; }
 
  private:
   u32 width;

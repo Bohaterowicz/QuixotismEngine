@@ -20,6 +20,22 @@ class EntityManager : public BucketArray<Entity> {
     return elements[id].GetComponent<COMPONENT_TYPE>();
   }
 
+  IdType Add(Entity &&entity) {
+    auto id = BucketArray<Entity>::Add(std::move(entity));
+    if (id != INVALID_ID) {
+      auto *e = Get(id);
+      e->id = id;
+    }
+    return id;
+  }
+
+  IdType Clone(const IdType id) {
+    auto *element = Get(id);
+    if (!element) return INVALID_ID;
+    auto cloned = *element;
+    return Add(std::move(cloned));
+  }
+
  private:
 };
 using EntityId = EntityManager::IdType;

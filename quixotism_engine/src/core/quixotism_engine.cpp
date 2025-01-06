@@ -11,6 +11,29 @@
 
 namespace quixotism {
 
+struct Ray {
+  Vec3 origin;
+  Vec3 direction;
+  Vec3 inv_direction;
+};
+
+static std::pair<bool, r32> RayAABBIntersection(const Ray& ray,
+                                                const AABB& box) {
+  r32 tmin{0.0}, tmax{INFINITY};
+  Unroll<0, 3>([&]<size_t i>() {
+    bool sign = std::signbit(ray.inv_direction[i]);
+    auto min = box.corners[sign][i];
+    auto max = box.corners[!sign][i];
+    auto t1 = (min - ray.origin[i]) * ray.inv_direction[i];
+    auto t2 = (max - ray.origin[i]) * ray.inv_direction[i];
+
+    tmin = Max(t1, tmin);
+    tmax = Min(t2, tmax);
+  });
+
+  return {tmin <= tmax, tmin};
+}
+
 struct OBB {
   Vec3 center = {};
   Vec3 extents = {};
@@ -83,7 +106,7 @@ static inline bool ComputeFrustumBoundOverlap(r32 min_bound, r32 max_bound,
  compared to eachother)
 */
 static bool SATFrustumCulling(const FrustumDesc& frustum, const Mat4& transform,
-                              const BoundingBox& bb) {
+                              const AABB& bb) {
   Vec3 corners[] = {{bb.min.x, bb.min.y, bb.min.z},
                     {bb.max.x, bb.min.y, bb.min.z},
                     {bb.min.x, bb.max.y, bb.min.z},
@@ -314,14 +337,25 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
   camera_id2 = entity_mgr.Clone(camera_id);
 
   InitTextFonts();
+  QuixotismRenderer::GetRenderer().CreateScreenQuad(screen_quad_mesh);
 
   auto png_data = QuixotismEngine::GetEngine().services.read_file(
-      "D:/QuixotismEngine/quixotism_engine/data/textures/wood_box.png");
+      "D:/QuixotismEngine/quixotism_engine/data/textures/container.png");
   auto img = ParsePNG(png_data.data.get(), png_data.size);
   if (img) {
     Texture texture{std::move(img.value())};
-    texture.glid = CreateTexture(std::get<Bitmap>(texture.bitmap), false);
+    texture.glid = CreateTexture2D(std::get<Bitmap>(texture.bitmap));
     tex_id = texture_mgr.Add(std::move(texture));
+  }
+
+  png_data = QuixotismEngine::GetEngine().services.read_file(
+      "D:/QuixotismEngine/quixotism_engine/data/textures/"
+      "container_specular.png");
+  img = ParsePNG(png_data.data.get(), png_data.size);
+  if (img) {
+    Texture texture{std::move(img.value())};
+    texture.glid = CreateTexture2D(std::get<Bitmap>(texture.bitmap));
+    stex_id = texture_mgr.Add(std::move(texture));
   }
 
   CubeBitmap cube_bitmaps;
@@ -359,6 +393,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
   Material mat1{QuixotismRenderer::GetRenderer().shader_mgr.GetByName("model")};
   mat1.diffuse = tex_id;
+  mat1.specular = stex_id;
   auto mat1_id = material_mgr.Add(std::move(mat1));
 
   Entity box;
@@ -378,6 +413,7 @@ void QuixotismEngine::Init(const PlatformServices& init_services,
 
 void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   auto& renderer = QuixotismRenderer::GetRenderer();
+  renderer.InitOffscreenFramebuffer();
   rendered_entities_count = 0;
   auto& transform = entity_mgr.Get(camera_id)->transform;
 
@@ -390,6 +426,122 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
       input.key_state_info[KC_CONTROL].is_down) {
     DBG_PRINT("Toggle terminal...");
     terminal.ToggleShow();
+  }
+
+  if (input.key_state_info[KC_LBUTTON].is_down &&
+      input.key_state_info[KC_LBUTTON].transition) {
+    auto& key = input.key_state_info[KC_LBUTTON];
+    auto pos = Vec2(key.mouse_pos.x / window_dim.width,
+                    key.mouse_pos.y / window_dim.height);
+    pos = (pos * 2.0f) - Vec2(1.0);
+    pos.y = -pos.y;
+
+    auto* camera = entity_mgr.GetComponent<CameraComponent>(camera_id);
+    auto projection =
+        camera->GetProjectionMatrix() * transform.GetTransformMatrix();
+    auto to_world_transform = projection.Inverse();
+
+    auto from = to_world_transform * Vec4{pos.x, pos.y, -1.0f, 1.0f};
+    auto to = to_world_transform * Vec4{pos.x, pos.y, 1.0f, 1.0f};
+
+    from /= from.w;
+    to /= to.w;
+
+    Ray ray;
+    ray.origin = from.xyz;
+    ray.direction = Vec3(to.xyz) - Vec3(from.xyz);
+    ray.inv_direction = 1.0f / ray.direction;
+
+    std::vector<std::pair<EntityId, r32>> aabb_ray_hit_entities;
+    for (auto& entity : entity_mgr) {
+      auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
+      if (!sm_comp) continue;
+      auto* sm = static_mesh_mgr.Get(sm_comp->GetStaticMeshId());
+      auto bb = sm->GetMeshData().bbox;
+      bb.min = (entity.transform.GetTransformMatrix() * Vec4{bb.min, 1}).xyz;
+      bb.max = (entity.transform.GetTransformMatrix() * Vec4{bb.max, 1}).xyz;
+
+      Unroll<0, 3>([&]<size_t i>() {
+        if (bb.max[i] < bb.min[i]) {
+          auto tmp = bb.max[i];
+          bb.max[i] = bb.min[i];
+          bb.min[i] = tmp;
+        }
+      });
+
+      auto const [hit, hit_val] = RayAABBIntersection(ray, bb);
+      if (hit) {
+        aabb_ray_hit_entities.emplace_back(entity.GetId(), hit_val);
+      }
+    }
+    // sort all entities that we hit from closest to furtherest (by the
+    // hit_value), we will perform then more precise line checks against
+    // triangles of the meshes.
+    std::sort(aabb_ray_hit_entities.begin(), aabb_ray_hit_entities.end(),
+              [](const auto& lhs, const auto& rhs) {
+                return lhs.second < rhs.second;
+              });
+
+    EntityId hit_entity = 0;
+    bool tri_hit = false;
+    for (auto const& [id, val] : aabb_ray_hit_entities) {
+      auto* entity = entity_mgr.Get(id);
+      auto* sm_comp = entity->GetComponent<StaticMeshComponent>();
+      auto* sm = static_mesh_mgr.Get(sm_comp->GetStaticMeshId());
+      auto& mesh = sm->GetMeshData();
+      auto& vert_indicies = mesh.VertexTriangleIndicies.PosIdx;
+      auto entity_transform = entity->transform.GetTransformMatrix();
+      // Muller-Trumbore ray-triangle intersection algorithm
+      // https://fileadmin.cs.lth.se/cs/Personal/Tomas_Akenine-Moller/code/raytri_tam.pdf
+      for (u32 i = 0; i < vert_indicies.size(); i += 3) {
+        Vec3 vert0 =
+            (Vec4(mesh.VertexPosData[vert_indicies[i]], 1.0) * entity_transform)
+                .xyz;
+        Vec3 vert1 = (Vec4(mesh.VertexPosData[vert_indicies[i + 1]], 1.0) *
+                      entity_transform)
+                         .xyz;
+        Vec3 vert2 = (Vec4(mesh.VertexPosData[vert_indicies[i + 2]], 1.0) *
+                      entity_transform)
+                         .xyz;
+
+        auto edge1 = vert1 - vert0;
+        auto edge2 = vert2 - vert0;
+
+        auto pvec = Cross(ray.direction, edge2);
+        auto det = edge1 * pvec;
+
+        if (det < 0.0000001) continue;
+
+        auto tvec = ray.origin - vert0;
+        auto u = tvec * pvec;
+        if (u < 0.0 || u > det) continue;
+
+        auto qvec = Cross(tvec, edge1);
+        auto v = ray.direction * qvec;
+        if (v < 0.0 || (u + v) > det) continue;
+
+        auto t = edge2 * qvec;
+        auto inv_det = 1.0 / det;
+
+        t *= inv_det;
+        if (t < 0) continue;
+
+        u *= inv_det;
+        v *= inv_det;
+
+        tri_hit = true;
+        break;
+      }
+      if (tri_hit) {
+        hit_entity = id;
+        break;
+      }
+    }
+
+    if (hit_entity) {
+      DBG_PRINT(std::string("ENTITY HIT: ") + std::to_string(hit_entity));
+      selected_entities = hit_entity;
+    }
   }
 
   if (!focused_element) {
@@ -452,7 +604,8 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
 
   terminal.Update(delta_t);
 
-  renderer.ClearRenderTarget();
+  renderer.offscreen_fbo.Bind();
+  renderer.ClearFramebuffer();
   DrawText("Hello Text!", -0.98, 0.8f, 0.03448);
   DrawEntities();
   DrawText("entity draw count: " + std::to_string(rendered_entities_count),
@@ -468,6 +621,14 @@ void QuixotismEngine::UpdateAndRender(InputState& input, r32 delta_t) {
   }
 
   renderer.ClearTextBuffer();
+
+  if (selected_entities) {
+    renderer.DrawOutline();
+  }
+
+  renderer.BindScreenFramebuffer();
+  renderer.ClearFramebuffer();
+  renderer.DrawToScreenQuad(screen_quad_mesh);
 }
 
 void QuixotismEngine::DrawEntities() {
@@ -479,14 +640,13 @@ void QuixotismEngine::DrawEntities() {
   for (auto& entity : entity_mgr) {
     auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
     if (!sm_comp) continue;
-
     auto* sm = static_mesh_mgr.Get(sm_comp->GetStaticMeshId());
     auto transform = view * entity.transform.GetTransformMatrix();
     if (SATFrustumCulling(camera->GetFrustumDescription(), transform,
                           sm->GetMeshData().bbox)) {
       QuixotismRenderer::GetRenderer().DrawStaticMesh(
           sm_comp->GetStaticMeshId(), sm_comp->GetMaterialID(),
-          entity.transform);
+          entity.transform, entity.GetId() == selected_entities);
       ++rendered_entities_count;
     }
   }
@@ -494,8 +654,8 @@ void QuixotismEngine::DrawEntities() {
     for (auto& entity : entity_mgr) {
       auto* sm_comp = entity.GetComponent<StaticMeshComponent>();
       if (!sm_comp) continue;
-      QuixotismRenderer::GetRenderer().DrawBoundingBox(
-          sm_comp->GetStaticMeshId(), entity.transform);
+      QuixotismRenderer::GetRenderer().DrawAABB(sm_comp->GetStaticMeshId(),
+                                                entity.transform);
     }
   }
 }

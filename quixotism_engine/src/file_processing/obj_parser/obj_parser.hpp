@@ -19,18 +19,24 @@ struct TriangleIndices {
   std::vector<u32> NormalIdx;
 };
 
-// AABB
-struct BoundingBox {
-  Vec3 min;
-  Vec3 max;
+struct AABB {
+  AABB(){};
+  union {
+    Vec3 corners[2];
+    struct {
+      Vec3 min;
+      Vec3 max;
+    };
+  };
 };
 
 struct Mesh {
+  Mesh(){};
   std::string ObjectName;
   std::vector<VertexPos> VertexPosData;
   std::vector<VertexNormal> VertexNormalData;
   std::vector<VertexTexCoords> VertexTexCoordData;
-  BoundingBox bbox;
+  AABB bbox;
   TriangleIndices VertexTriangleIndicies;
 };
 

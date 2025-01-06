@@ -31,10 +31,15 @@ class Entity {
     }
   }
 
+  u64 GetId() const { return id; }
+
   Transform transform;
 
  private:
+  u64 id = 0;
   ComponentId components[COMPONENT_COUNT] = {};
+
+  friend class EntityManager;
 };
 
 }  // namespace quixotism
